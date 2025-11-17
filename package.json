@@ -4,11 +4,7 @@
   "description": "AI-powered Browser automation using playwright mcp",
   "main": "src/index.js",
   "type": "module",
-  "exports": {
-    ".": "./src/index.js",
-    "./claude": "./src/claude-agent.js",
-    "./langchain": "./src/langchain-agent.js"
-  },
+  "exports": "./src/index.js",
   "keywords": [
     "claude",
     "agent",
@@ -23,9 +19,20 @@
   "homepage": "https://www.auto-browse.com/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/auto-browse/openqa"
+    "url": "git+https://github.com/auto-browse/openqa.git"
   },
   "license": "MIT",
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.0",
     "@langchain/anthropic": "^1.0.1",

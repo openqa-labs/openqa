@@ -1,5 +1,8 @@
 # openqa
 
+[![npm version](https://badge.fury.io/js/openqa.svg)](https://www.npmjs.com/package/openqa)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 AI-powered browser automation with shared context using Claude Agent SDK and Playwright MCP.
 
 ## Features

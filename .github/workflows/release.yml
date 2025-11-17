@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.0.1)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Get version from package.json
+        id: package_version
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.package_version.outputs.version }}
+          release_name: Release v${{ steps.package_version.outputs.version }}
+          body: |
+            ## OpenQA v${{ steps.package_version.outputs.version }}
+
+            ### Installation
+            ```bash
+            npm install openqa
+            ```
+
+            ### NPM Package
+            https://www.npmjs.com/package/openqa/v/${{ steps.package_version.outputs.version }}
+
+            ### Documentation
+            See [README.md](https://github.com/auto-browse/openqa#readme) for usage instructions.
+          draft: false
+          prerelease: false

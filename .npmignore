@@ -1,0 +1,27 @@
+# Test results and reports
+test-results/
+playwright-report/
+
+# Examples (users can reference from GitHub)
+examples/
+
+# Development files
+.env
+.env.*
+*.log
+.DS_Store
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Dependencies
+node_modules/
+
+# Temporary files
+*.tgz
+*.tmp
