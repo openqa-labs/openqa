@@ -74,5 +74,9 @@
     "@cucumber/cucumber": {
       "optional": true
     }
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^12.2.0",
+    "playwright-bdd": "^8.4.1"
   }
 }
