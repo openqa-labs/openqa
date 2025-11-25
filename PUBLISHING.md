@@ -13,6 +13,59 @@
    npm login
    ```
 
+## Testing Before Publishing
+
+### Option 1: Test with npm link (Recommended)
+
+```bash
+# In openqa repo root
+npm link
+
+# In a test project directory
+mkdir ../test-openqa && cd ../test-openqa
+npm link openqa
+npm install playwright-bdd @playwright/test
+
+# Test the CLI
+npx openqa init playwright-bdd
+
+# Test in a Node script
+node -e "import('openqa').then(m => console.log(m))"
+```
+
+Clean up after testing:
+```bash
+# In test project
+npm unlink openqa
+
+# In openqa repo
+npm unlink
+```
+
+### Option 2: Test with npm pack
+
+```bash
+# In openqa repo
+npm pack
+# Creates: openqa-0.0.1.tgz
+
+# In test project
+npm install /path/to/openqa-0.0.1.tgz
+npm install playwright-bdd @playwright/test
+npx openqa init playwright-bdd
+```
+
+### Option 3: Publish Beta Version
+
+```bash
+# In openqa repo
+npm version 0.0.2-beta.0
+npm publish --tag beta
+
+# In test project
+npm install openqa@beta
+```
+
 ## Publishing to npm
 
 1. **Verify package contents:**
@@ -51,28 +104,50 @@ git push origin v0.0.1
 
 Then create the release on GitHub UI.
 
+## Pre-Publish Checklist
+
+Before publishing, ensure:
+
+1. ✅ All tests pass
+2. ✅ Tested with `npm link` or `npm pack`
+3. ✅ CLI tool works: `npx openqa init playwright-bdd`
+4. ✅ README is up to date
+5. ✅ Branch merged to main
+6. ✅ Version bumped appropriately
+
 ## Version Updates
 
 When releasing new versions:
 
-1. Update version in package.json:
+1. **Merge feature branch to main:**
    ```bash
-   npm version patch  # 0.0.1 -> 0.0.2
-   npm version minor  # 0.0.1 -> 0.1.0
-   npm version major  # 0.0.1 -> 1.0.0
+   git checkout main
+   git merge feat/your-feature
    ```
 
-2. Commit and push:
+2. **Update version in package.json:**
+   ```bash
+   npm version patch  # 0.0.1 -> 0.0.2 (bug fixes)
+   npm version minor  # 0.0.1 -> 0.1.0 (new features)
+   npm version major  # 0.0.1 -> 1.0.0 (breaking changes)
+   ```
+
+   This automatically:
+   - Updates package.json
+   - Creates a git commit
+   - Creates a git tag
+
+3. **Push to GitHub:**
    ```bash
    git push && git push --tags
    ```
 
-3. Publish:
+4. **Publish to npm:**
    ```bash
    npm publish
    ```
 
-4. Run GitHub Release workflow
+5. Run GitHub Release workflow (optional)
 
 ## Verify Publication
 
