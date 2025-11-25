@@ -7,78 +7,18 @@ AI-powered browser automation with shared context using Claude Agent SDK and Pla
 
 ## Features
 
-- **Shared Browser Context**: Agent and tests share the same browser instance, cookies, and session
-- **AI-Powered Automation**: Natural language commands for browser interactions
-- **Playwright Integration**: Seamless integration with Playwright tests
-- **True Collaboration**: Test navigates, agent interacts, test verifies - all in the same browser
-
-## Installation
-
-```bash
-npm install openqa @playwright/test
-```
-
-## Setup
-
-OpenQA works seamlessly with Claude Code credentials - no API key needed if you're already logged in!
-
-**Option 1: Use Claude Code credentials (Recommended)**
-
-If you have [Claude Code](https://claude.com/claude-code) installed, just run:
-
-```bash
-claude login
-```
-
-OpenQA will automatically use your Claude Code session - no additional setup required.
-
-**Option 2: Use Anthropic API key**
-
-Set your API key via export (not needed if you logged in to claude code):
-
-```bash
-export ANTHROPIC_API_KEY=your_api_key_here
-```
-
-Or create a `.env` file:
-
-```
-ANTHROPIC_API_KEY=your_api_key_here
-```
+- **Zero Step Definitions**: Write BDD tests in pure natural language
+- **Shared Browser Context**: Agent and tests share the same browser instance
+- **AI-Powered**: Natural language commands for all browser interactions
+- **2-Minute Setup**: From zero to running tests with `npx openqa init`
 
 ## Quick Start
 
-```javascript
-import { test } from "@playwright/test";
-import { runAgent } from "openqa";
+Choose your path:
 
-test("AI agent fills form", async ({ page, context }) => {
-  await page.goto("https://example.com/form");
+### 🚀 BDD Testing (Recommended)
 
-  // Agent uses the same browser context
-  await runAgent(
-    'Fill in the form with test data',
-    context
-  );
-
-  // Verify in the same browser
-  await expect(page.locator('input[name="email"]')).toHaveValue("test@example.com");
-});
-```
-
-## How It Works
-
-The agent uses `@playwright/mcp` with `createConnection()` to share the browser context programmatically. This enables:
-
-- Shared cookies and session storage
-- Same page state and navigation history
-- Agent sees test's pages and vice versa
-- True collaborative automation
-
-## BDD Integration (New! 🎉)
-
-### New Project (2 Minutes Setup)
-
+**New project:**
 ```bash
 npx openqa init playwright-bdd
 cd my-project
@@ -86,131 +26,129 @@ claude login  # or set ANTHROPIC_API_KEY
 npm test
 ```
 
-That's it! Write `.feature` files and AI handles all automation.
+Write `.feature` files in plain English - AI handles everything!
 
-### Existing BDD Project (Drop-in Replacement)
+```gherkin
+Feature: Shopping
+  Scenario: Buy a product
+    Given I navigate to "https://shop.example.com"
+    When I search for "laptop" and add the first result to cart
+    And I proceed to checkout and enter shipping details
+    Then I should see "Order confirmed"
+```
 
-Already have Playwright-BDD or Cucumber.js? Replace all step definitions with 1 line:
+**Existing BDD project:**
+```bash
+npm install openqa
+```
 
+Replace all step definitions with 1 line:
 ```typescript
 // features/steps/steps.ts
 import 'openqa/bdd/playwright-bdd';
 ```
 
-Your existing `.feature` files work instantly - no code changes needed!
+**Supported frameworks:** Playwright-BDD • Cucumber.js
 
-```gherkin
-Feature: Shopping Cart
-  Scenario: Add items to cart
-    Given I navigate to "https://shop.example.com"
-    When I search for "laptop" and add the first result to cart
-    Then I should see "1 item" in the cart badge
+### 📝 Standard Playwright Tests
+
+```bash
+npm install openqa @playwright/test
 ```
 
-**Supported:** Playwright-BDD • Cucumber.js
+```typescript
+import { test } from "@playwright/test";
+import { runAgent } from "openqa";
 
-## Examples
+test("AI agent fills form", async ({ page, context }) => {
+  await page.goto("https://example.com/form");
 
-### Playwright Tests
-See [`examples/playwright/`](examples/playwright/) for standard Playwright test examples:
+  // Agent uses the same browser context
+  await runAgent('Fill in the form with test data', context);
 
-- Basic context sharing
-- Cookie sharing between test and agent
-- Agent filling forms with test verification
-- Collaborative workflows
+  // Verify in the same browser
+  await expect(page.locator('input[name="email"]')).toHaveValue("test@example.com");
+});
+```
 
-### Playwright BDD (Simplified)
-See [`examples/playwright-bdd-simple/`](examples/playwright-bdd-simple/) for the **1-line integration**:
+## Authentication
 
-- Zero step definitions needed
-- Pure Gherkin feature files
-- AI handles all automation
+OpenQA works with Claude Code credentials - no API key needed!
 
-### Playwright BDD (Manual)
-See [`examples/playwright-bdd/`](examples/playwright-bdd/) for manual step definition examples:
+**Option 1: Claude Code (Recommended)**
+```bash
+claude login
+```
 
-- Writing scenarios in Given/When/Then format
-- AI-powered When steps with natural language
-- Cucumber HTML reports
+**Option 2: API Key**
+```bash
+export ANTHROPIC_API_KEY=your_api_key_here
+```
 
-## API
+## How It Works
 
-### Core API
+The agent uses `@playwright/mcp` with `createConnection()` to share the browser context. This enables:
 
-#### `runAgent(prompt, browserContext, options?)`
+- Shared cookies and session storage
+- Same page state and navigation history
+- True collaborative automation between tests and AI
 
-Run an AI agent with a specific Playwright browser context.
+## API Reference
+
+### `runAgent(prompt, browserContext, options?)`
 
 **Parameters:**
-- `prompt` (string): Natural language instruction for the agent
-- `browserContext` (BrowserContext): Playwright browser context from test
+- `prompt` (string): Natural language instruction
+- `browserContext` (BrowserContext): Playwright browser context
 - `options` (object): Optional configuration
-  - `verbose` (boolean): Enable detailed logging (default: true)
-  - `agentType` (string): 'claude' or 'langchain' (default: 'claude')
-  - `provider` (string): AI provider for langchain ('anthropic', 'openai', 'google')
+  - `verbose` (boolean): Enable logging (default: true)
+  - `agentType` (string): 'claude' or 'langchain'
+  - `provider` (string): AI provider for langchain
   - `model` (string): Model name
 
-**Returns:** Promise<string> - Agent's response
+**Returns:** Promise<string>
 
-### BDD API
+### BDD Integration
 
-#### Playwright-BDD
-
-**Simple usage (auto-registers AI step):**
+**Playwright-BDD (simple):**
 ```typescript
 import 'openqa/bdd/playwright-bdd';
 ```
 
-**Custom configuration:**
+**Playwright-BDD (custom):**
 ```typescript
 import { createAIStep } from 'openqa/bdd/playwright-bdd';
 
 createAIStep({
   verbose: false,
   agentType: 'claude',
-  pattern: /^(.*)$/  // Custom regex pattern
 });
 ```
 
-#### Cucumber.js
-
-**Simple usage (auto-setup with browser):**
+**Cucumber.js:**
 ```typescript
 import 'openqa/bdd/cucumber';
+// Browser setup included automatically!
 ```
 
-**Custom configuration:**
-```typescript
-import { createAIStep, enableAutoBrowserSetup } from 'openqa/bdd/cucumber';
+## Examples
 
-enableAutoBrowserSetup({ headless: true });
-createAIStep({ verbose: false });
-```
-
-**With manual browser setup:**
-```typescript
-import { createAIStepWithContext, Before, After } from 'openqa/bdd/cucumber';
-import { chromium } from 'playwright';
-
-let context;
-
-Before(async function() {
-  const browser = await chromium.launch();
-  context = await browser.newContext();
-});
-
-createAIStepWithContext(() => context);
-```
+- [`examples/playwright/`](examples/playwright/) - Standard Playwright tests
+- [`examples/playwright-bdd-simple/`](examples/playwright-bdd-simple/) - 1-line BDD integration
+- [`examples/playwright-bdd/`](examples/playwright-bdd/) - Manual BDD setup
+- [`examples/playwright-bdd-onkernel/`](examples/playwright-bdd-onkernel/) - BDD with OnKernel cloud browsers
 
 ## Requirements
 
 - Node.js 18+
-- An Anthropic API key configured for Claude Agent SDK
 - `@playwright/test` ^1.56.0
+- Anthropic API key or Claude Code login
 
-## Website
+## Links
 
-https://www.auto-browse.com/
+- **Website:** https://www.auto-browse.com/
+- **NPM:** https://www.npmjs.com/package/openqa
+- **GitHub:** https://github.com/auto-browse/openqa
 
 ## License
 
