@@ -1,0 +1,21 @@
+{
+  "name": "playwright-bdd-simple-example",
+  "version": "1.0.0",
+  "description": "Simplified OpenQA example with 1-line integration",
+  "type": "module",
+  "scripts": {
+    "bddgen": "bddgen",
+    "test": "npm run bddgen && playwright test",
+    "test:ui": "npm run bddgen && playwright test --ui",
+    "test:report": "playwright show-report"
+  },
+  "dependencies": {
+    "openqa": "file:../.."
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^11.0.1",
+    "@playwright/test": "^1.56.1",
+    "playwright-bdd": "^8.4.1",
+    "typescript": "^5.7.2"
+  }
+}

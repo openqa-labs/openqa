@@ -4,7 +4,12 @@
   "description": "AI-powered Browser automation using playwright mcp",
   "main": "src/index.js",
   "type": "module",
-  "exports": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./bdd": "./src/bdd/index.js",
+    "./bdd/playwright-bdd": "./src/bdd/playwright-bdd.js",
+    "./bdd/cucumber": "./src/bdd/cucumber.js"
+  },
   "keywords": [
     "claude",
     "agent",
@@ -13,7 +18,11 @@
     "ai",
     "testing",
     "mcp",
-    "shared-context"
+    "shared-context",
+    "bdd",
+    "cucumber",
+    "gherkin",
+    "behavior-driven-development"
   ],
   "author": "Gurvinder Dhillon",
   "homepage": "https://www.auto-browse.com/",
@@ -47,6 +56,16 @@
     "zod": "^3.25.76"
   },
   "peerDependencies": {
-    "@playwright/test": "^1.56.0"
+    "@playwright/test": "^1.56.0",
+    "playwright-bdd": "^8.0.0",
+    "@cucumber/cucumber": "^11.0.0"
+  },
+  "peerDependenciesMeta": {
+    "playwright-bdd": {
+      "optional": true
+    },
+    "@cucumber/cucumber": {
+      "optional": true
+    }
   }
 }
