@@ -77,14 +77,27 @@ The agent uses `@playwright/mcp` with `createConnection()` to share the browser 
 
 ## BDD Integration (New! 🎉)
 
-Replace all your step definitions with **just 1 line of code**:
+### New Project (2 Minutes Setup)
+
+```bash
+npx openqa init playwright-bdd
+cd my-project
+claude login  # or set ANTHROPIC_API_KEY
+npm test
+```
+
+That's it! Write `.feature` files and AI handles all automation.
+
+### Existing BDD Project (Drop-in Replacement)
+
+Already have Playwright-BDD or Cucumber.js? Replace all step definitions with 1 line:
 
 ```typescript
 // features/steps/steps.ts
 import 'openqa/bdd/playwright-bdd';
 ```
 
-That's it! Now write your `.feature` files and the AI handles everything:
+Your existing `.feature` files work instantly - no code changes needed!
 
 ```gherkin
 Feature: Shopping Cart
@@ -94,13 +107,7 @@ Feature: Shopping Cart
     Then I should see "1 item" in the cart badge
 ```
 
-### Supported Frameworks
-
-- **Playwright-BDD**: `import 'openqa/bdd/playwright-bdd'`
-- **Cucumber.js**: `import 'openqa/bdd/cucumber'`
-- More coming soon!
-
-See [`examples/playwright-bdd-simple/`](examples/playwright-bdd-simple/) for a complete working example.
+**Supported:** Playwright-BDD • Cucumber.js
 
 ## Examples
 
