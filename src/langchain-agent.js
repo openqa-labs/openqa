@@ -143,6 +143,7 @@ async function createPlaywrightTools(browserContext) {
  * @param {string} options.model - Model name (provider-specific)
  * @param {boolean} options.verbose - Enable verbose logging (default: true)
  * @param {boolean} options.returnUsage - Return usage statistics (default: false)
+ * @param {number} options.recursionLimit - Maximum recursion depth to prevent infinite loops (default: 25)
  * @param {object} options.modelConfig - Additional model configuration
  * @returns {Promise<string|object>} - The final result or result with usage data
  */
@@ -151,6 +152,7 @@ export async function runLangChainAgent(prompt, browserContext, options = {}) {
   const model = options.model;
   const verbose = options.verbose !== false;
   const returnUsage = options.returnUsage || false;
+  const recursionLimit = options.recursionLimit || 25;
   const modelConfig = options.modelConfig || {};
 
   // Track usage for this specific agent call
@@ -223,11 +225,12 @@ export async function runLangChainAgent(prompt, browserContext, options = {}) {
     const config = {
       configurable: {
         thread_id: sessionData.sessionId
-      }
+      },
+      recursion_limit: recursionLimit
     };
 
     if (verbose) {
-      console.log('📡 Processing messages from LangChain agent:\n');
+      console.log(`📡 Processing messages from LangChain agent (recursion limit: ${recursionLimit}):\n`);
     }
 
     // Stream the agent execution
