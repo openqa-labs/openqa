@@ -36,7 +36,8 @@ CLAUDE_CODE_OAUTH_TOKEN=your_token
 ```bash
 npx openqa init playwright-bdd
 cd my-project
-claude login  # or set ANTHROPIC_API_KEY
+cp .env.example .env  # See .env for all auth options
+claude login          # or edit .env
 npm test
 ```
 

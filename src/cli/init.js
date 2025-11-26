@@ -6,7 +6,7 @@
 
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, cpSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, cpSync, readdirSync } from 'fs';
 import { join, resolve } from 'path';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
@@ -61,7 +61,7 @@ export async function init(framework, options) {
 
   // Check if directory exists and is empty
   if (existsSync(targetDir)) {
-    const files = require('fs').readdirSync(targetDir);
+    const files = readdirSync(targetDir);
     if (files.length > 0 && !files.every(f => f.startsWith('.'))) {
       const { confirm } = await inquirer.prompt([
         {
@@ -144,10 +144,11 @@ export async function init(framework, options) {
     console.log(chalk.cyan(`  cd ${targetDir}`));
   }
 
-  console.log(chalk.cyan('  # Set up authentication (choose one):'));
-  console.log(chalk.cyan('  claude login                 # Use Claude Code'));
-  console.log(chalk.cyan('  # OR'));
-  console.log(chalk.cyan('  export ANTHROPIC_API_KEY=... # Use API key\n'));
+  console.log(chalk.cyan('  # Set up authentication:'));
+  console.log(chalk.cyan('  # 1. Copy .env.example to .env'));
+  console.log(chalk.cyan('  cp .env.example .env'));
+  console.log(chalk.cyan('  # 2. Choose authentication method (see .env file)'));
+  console.log(chalk.cyan('  claude login                 # OR edit .env\n'));
 
   if (framework === 'playwright-bdd') {
     console.log(chalk.cyan('  # Run the example test:'));
