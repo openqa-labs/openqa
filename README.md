@@ -102,9 +102,10 @@ The agent uses `@playwright/mcp` with `createConnection()` to share the browser 
 - `browserContext` (BrowserContext): Playwright browser context
 - `options` (object): Optional configuration
   - `verbose` (boolean): Enable logging (default: true)
-  - `agentType` (string): 'claude' or 'langchain'
-  - `provider` (string): AI provider for langchain
-  - `model` (string): Model name
+  - `agentType` (string): 'claude' (default, preferred) or 'langchain'
+  - `provider` (string): AI provider for langchain ('anthropic', 'openai', 'google')
+  - `model` (string): Model name (supports env vars: ANTHROPIC_MODEL, OPENAI_MODEL, GOOGLE_MODEL)
+  - `recursionLimit` (number): Max recursion depth (default: 100, env: RECURSION_LIMIT)
 
 **Returns:** Promise<string>
 
