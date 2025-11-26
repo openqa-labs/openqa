@@ -24,7 +24,10 @@
     "bdd",
     "cucumber",
     "gherkin",
-    "behavior-driven-development"
+    "behavior-driven-development",
+    "deepagents",
+    "planning",
+    "file-systems"
   ],
   "author": "Gurvinder Dhillon",
   "homepage": "https://www.auto-browse.com/",
@@ -56,6 +59,7 @@
     "@playwright/mcp": "^0.0.44",
     "chalk": "^5.6.2",
     "commander": "^12.1.0",
+    "deepagents": "^1.0.0",
     "dotenv": "^17.2.3",
     "inquirer": "^9.3.8",
     "langchain": "^1.0.2",

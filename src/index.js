@@ -1,5 +1,6 @@
 import { runClaudeAgent } from './claude-agent.js';
 import { runLangChainAgent } from './langchain-agent.js';
+import { runDeepAgentsAgent } from './deepagents-agent.js';
 import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -13,13 +14,14 @@ config({ path: join(rootDir, '.env') });
 /**
  * Unified Browser Agent Interface
  *
- * Provides a single interface to run any of the two supported agents:
+ * Provides a single interface to run any of the three supported agents:
  * - Claude Agent SDK (claude)
  * - LangChain Agent (langchain)
+ * - DeepAgents (deepagents)
  *
  * Configuration:
- * - Via environment variable: AGENT_TYPE=claude|langchain
- * - Via options: options.agentType='claude'|'langchain'
+ * - Via environment variable: AGENT_TYPE=claude|langchain|deepagents
+ * - Via options: options.agentType='claude'|'langchain'|'deepagents'
  * - Priority: options.agentType > AGENT_TYPE env var > default (claude)
  */
 
@@ -55,10 +57,13 @@ export async function runAgent(prompt, browserContext, options = {}) {
     case 'langchain':
       return runLangChainAgent(prompt, browserContext, options);
 
+    case 'deepagents':
+      return runDeepAgentsAgent(prompt, browserContext, options);
+
     default:
       throw new Error(
         `Unsupported agent type: ${agentType}. ` +
-        `Supported types are: 'claude', 'langchain'. ` +
+        `Supported types are: 'claude', 'langchain', 'deepagents'. ` +
         `Set via options.agentType or AGENT_TYPE environment variable.`
       );
   }
@@ -82,10 +87,13 @@ runAgent.resetSession = async function(browserContext, options = {}) {
     case 'langchain':
       return runLangChainAgent.resetSession(browserContext);
 
+    case 'deepagents':
+      return runDeepAgentsAgent.resetSession(browserContext);
+
     default:
       throw new Error(
         `Unsupported agent type: ${agentType}. ` +
-        `Supported types are: 'claude', 'langchain'.`
+        `Supported types are: 'claude', 'langchain', 'deepagents'.`
       );
   }
 };
@@ -93,3 +101,4 @@ runAgent.resetSession = async function(browserContext, options = {}) {
 // Also export individual agents for direct access
 export { runClaudeAgent } from './claude-agent.js';
 export { runLangChainAgent } from './langchain-agent.js';
+export { runDeepAgentsAgent } from './deepagents-agent.js';
