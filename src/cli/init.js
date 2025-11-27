@@ -6,7 +6,7 @@
 
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, cpSync, readdirSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, cpSync, readdirSync, unlinkSync } from 'fs';
 import { join, resolve } from 'path';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
@@ -95,6 +95,18 @@ export async function init(framework, options) {
   } catch (error) {
     console.error(chalk.red('❌ Error copying template files:'), error.message);
     return;
+  }
+
+  // Rename gitignore to .gitignore (npm excludes .gitignore from packages)
+  const gitignoreSrc = join(targetDir, 'gitignore');
+  const gitignoreDest = join(targetDir, '.gitignore');
+  if (existsSync(gitignoreSrc)) {
+    try {
+      cpSync(gitignoreSrc, gitignoreDest);
+      unlinkSync(gitignoreSrc);
+    } catch (error) {
+      console.error(chalk.yellow('⚠️  Could not create .gitignore file'));
+    }
   }
 
   // Create package.json if it doesn't exist
