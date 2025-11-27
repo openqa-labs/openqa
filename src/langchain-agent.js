@@ -60,21 +60,21 @@ function createModel(provider, model, modelConfig = {}) {
   switch (provider.toLowerCase()) {
     case 'anthropic':
       return new ChatAnthropic({
-        model: model || 'claude-sonnet-4-5',
+        model: model || process.env.ANTHROPIC_MODEL || process.env.DEFAULT_MODEL || 'claude-sonnet-4-5',
         apiKey: process.env.ANTHROPIC_API_KEY,
         ...defaultConfig
       });
 
     case 'openai':
       return new ChatOpenAI({
-        model: model || 'gpt-4o',
+        model: model || process.env.OPENAI_MODEL || process.env.DEFAULT_MODEL || 'gpt-4o',
         apiKey: process.env.OPENAI_API_KEY,
         ...defaultConfig
       });
 
     case 'google':
       return new ChatGoogleGenerativeAI({
-        model: model || 'gemini-2.5-flash',
+        model: model || process.env.GOOGLE_MODEL || process.env.DEFAULT_MODEL || 'gemini-2.5-flash',
         apiKey: process.env.GOOGLE_API_KEY,
         ...defaultConfig
       });
@@ -141,16 +141,27 @@ async function createPlaywrightTools(browserContext) {
  * @param {string} options.provider - AI provider: 'anthropic', 'openai', or 'google'
  *                                    Priority: options.provider > DEFAULT_PROVIDER env var > 'anthropic'
  * @param {string} options.model - Model name (provider-specific)
+ *                                Priority: options.model > ANTHROPIC_MODEL/OPENAI_MODEL/GOOGLE_MODEL env var > DEFAULT_MODEL env var > hardcoded default
  * @param {boolean} options.verbose - Enable verbose logging (default: true)
  * @param {boolean} options.returnUsage - Return usage statistics (default: false)
+ * @param {number} options.recursionLimit - Maximum recursion depth to prevent infinite loops
+ *                                          Priority: options.recursionLimit > RECURSION_LIMIT env var > 100 (default)
  * @param {object} options.modelConfig - Additional model configuration
  * @returns {Promise<string|object>} - The final result or result with usage data
+ *
+ * Environment Variables:
+ * - RECURSION_LIMIT: Default recursion limit for all invocations (default: 100)
+ * - DEFAULT_MODEL: Default model for all providers (overrides hardcoded defaults)
+ * - ANTHROPIC_MODEL: Default model for Anthropic (e.g., 'claude-sonnet-4-5')
+ * - OPENAI_MODEL: Default model for OpenAI (e.g., 'gpt-4o')
+ * - GOOGLE_MODEL: Default model for Google (e.g., 'gemini-2.5-flash')
  */
 export async function runLangChainAgent(prompt, browserContext, options = {}) {
   const provider = options.provider || process.env.DEFAULT_PROVIDER || 'anthropic';
   const model = options.model;
   const verbose = options.verbose !== false;
   const returnUsage = options.returnUsage || false;
+  const recursionLimit = options.recursionLimit || parseInt(process.env.RECURSION_LIMIT) || 100;
   const modelConfig = options.modelConfig || {};
 
   // Track usage for this specific agent call
@@ -223,11 +234,12 @@ export async function runLangChainAgent(prompt, browserContext, options = {}) {
     const config = {
       configurable: {
         thread_id: sessionData.sessionId
-      }
+      },
+      recursion_limit: recursionLimit
     };
 
     if (verbose) {
-      console.log('📡 Processing messages from LangChain agent:\n');
+      console.log(`📡 Processing messages from LangChain agent (recursion limit: ${recursionLimit}):\n`);
     }
 
     // Stream the agent execution

@@ -14,17 +14,17 @@ AI-powered browser automation with shared context using Claude Agent SDK and Pla
 
 ## Quick Start
 
-Choose your path:
+**New Project (Playwright-BDD or Cucumber.js):**
 
-### 🚀 BDD Testing (Recommended)
-
-**New project:**
 ```bash
-npx openqa init playwright-bdd
-cd my-project
-claude login  # or set ANTHROPIC_API_KEY
-npm test
+npx openqa init
 ```
+
+This single command will:
+1. Prompt for framework selection (Playwright-BDD or Cucumber.js)
+2. Install dependencies and Playwright browsers
+3. Prompt for AI provider (Anthropic or Other)
+4. Show tailored setup instructions
 
 Write `.feature` files in plain English - AI handles everything!
 
@@ -37,25 +37,128 @@ Feature: Shopping
     Then I should see "Order confirmed"
 ```
 
-**Existing BDD project:**
+---
+
+**Integrations with Existing Projects:**
+
+- **[With Existing Playwright-BDD](#with-existing-playwright-bdd)**
+- **[With Existing Cucumber.js](#with-existing-cucumberjs)**
+- **[With Existing Playwright](#with-existing-playwright)**
+
+---
+
+## With Existing Playwright-BDD
+
+**Step 1**: Install OpenQA
 ```bash
 npm install openqa
 ```
 
-Replace all step definitions with 1 line:
-```typescript
-// features/steps/steps.ts
-import 'openqa/bdd/playwright-bdd';
+**Step 2**: Setup authentication
+
+Choose ONE method:
+```bash
+# A. Claude Code CLI (recommended)
+claude login
+
+# B. API Key
+export ANTHROPIC_API_KEY=your_key
+
+# C. .env file
+echo "ANTHROPIC_API_KEY=your_key" > .env
 ```
 
-**Supported frameworks:** Playwright-BDD • Cucumber.js
+For OpenAI/Google, create `.env`:
+```bash
+AGENT_TYPE=langchain
+DEFAULT_PROVIDER=openai  # or 'google'
+OPENAI_API_KEY=your_key
+```
 
-### 📝 Standard Playwright Tests
+**Step 3**: Replace step definitions
+```typescript
+// features/steps/steps.ts
+export { test } from 'openqa/bdd/playwright-bdd';
+```
 
+**Step 4**: Run tests
+```bash
+npm test
+```
+
+---
+
+## With Existing Cucumber.js
+
+**Step 1**: Install OpenQA
 ```bash
 npm install openqa @playwright/test
 ```
 
+**Step 2**: Setup authentication
+
+Choose ONE method:
+```bash
+# A. Claude Code CLI (recommended)
+claude login
+
+# B. API Key
+export ANTHROPIC_API_KEY=your_key
+
+# C. .env file
+echo "ANTHROPIC_API_KEY=your_key" > .env
+```
+
+For OpenAI/Google, create `.env`:
+```bash
+AGENT_TYPE=langchain
+DEFAULT_PROVIDER=openai  # or 'google'
+OPENAI_API_KEY=your_key
+```
+
+**Step 3**: Replace step definitions
+```javascript
+// features/step_definitions/steps.js
+import 'openqa/bdd/cucumber';
+// Browser setup included automatically!
+```
+
+**Step 4**: Run tests
+```bash
+npm test
+```
+
+---
+
+## With Existing Playwright
+
+**Step 1**: Install OpenQA
+```bash
+npm install openqa
+```
+
+**Step 2**: Setup authentication
+
+Choose ONE method:
+```bash
+# A. Claude Code CLI (recommended)
+claude login
+
+# B. API Key
+export ANTHROPIC_API_KEY=your_key
+
+# C. .env file
+echo "ANTHROPIC_API_KEY=your_key" > .env
+```
+
+For OpenAI/Google, create `.env`:
+```bash
+AGENT_TYPE=langchain
+DEFAULT_PROVIDER=openai  # or 'google'
+OPENAI_API_KEY=your_key
+```
+
+**Step 3**: Use in your tests
 ```typescript
 import { test } from "@playwright/test";
 import { runAgent } from "openqa";
@@ -71,19 +174,12 @@ test("AI agent fills form", async ({ page, context }) => {
 });
 ```
 
-## Authentication
-
-OpenQA works with Claude Code credentials - no API key needed!
-
-**Option 1: Claude Code (Recommended)**
+**Step 4**: Run tests
 ```bash
-claude login
+npx playwright test
 ```
 
-**Option 2: API Key**
-```bash
-export ANTHROPIC_API_KEY=your_api_key_here
-```
+---
 
 ## How It Works
 
@@ -97,14 +193,17 @@ The agent uses `@playwright/mcp` with `createConnection()` to share the browser 
 
 ### `runAgent(prompt, browserContext, options?)`
 
+Run AI agent with natural language instruction.
+
 **Parameters:**
 - `prompt` (string): Natural language instruction
 - `browserContext` (BrowserContext): Playwright browser context
 - `options` (object): Optional configuration
   - `verbose` (boolean): Enable logging (default: true)
-  - `agentType` (string): 'claude' or 'langchain'
-  - `provider` (string): AI provider for langchain
+  - `agentType` (string): 'claude' (default) or 'langchain'
+  - `provider` (string): AI provider ('anthropic', 'openai', 'google')
   - `model` (string): Model name
+  - `recursionLimit` (number): Max recursion depth (default: 100)
 
 **Returns:** Promise<string>
 
@@ -112,7 +211,8 @@ The agent uses `@playwright/mcp` with `createConnection()` to share the browser 
 
 **Playwright-BDD (simple):**
 ```typescript
-import 'openqa/bdd/playwright-bdd';
+// features/steps/steps.ts
+export { test } from 'openqa/bdd/playwright-bdd';
 ```
 
 **Playwright-BDD (custom):**
@@ -128,7 +228,6 @@ createAIStep({
 **Cucumber.js:**
 ```typescript
 import 'openqa/bdd/cucumber';
-// Browser setup included automatically!
 ```
 
 ## Examples
@@ -142,7 +241,7 @@ import 'openqa/bdd/cucumber';
 
 - Node.js 18+
 - `@playwright/test` ^1.56.0
-- Anthropic API key or Claude Code login
+- Claude Code login, Anthropic API key, or other provider API key
 
 ## Links
 

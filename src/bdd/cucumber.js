@@ -26,9 +26,12 @@
  * createAIStepWithContext(() => context);
  */
 
-import { Given, When, Then, Before, After, setWorldConstructor } from '@cucumber/cucumber';
+import { Given, When, Then, Before, After, setWorldConstructor, setDefaultTimeout } from '@cucumber/cucumber';
 import { chromium } from 'playwright';
 import { runAgent } from '../index.js';
+
+// Set default timeout to 4 minutes for AI-powered browser tests
+setDefaultTimeout(240000);
 
 let browser, context, page;
 
