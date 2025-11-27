@@ -113,8 +113,9 @@ export async function init(framework, options) {
               'test:report': 'playwright show-report',
             }
           : {
-              test: 'cucumber-js',
-              'test:report': 'cucumber-js --format html:cucumber-report.html',
+              test: 'cucumber-js --format html:cucumber-test-results/cucumber-report.html',
+              'test:headed': 'HEADLESS=false cucumber-js --format html:cucumber-test-results/cucumber-report.html',
+              'test:report': 'open cucumber-test-results/cucumber-report.html',
             },
       dependencies: {},
       devDependencies: {},
