@@ -5,7 +5,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSync } from 'fs';
-import { join, dirname, basename, extname } from 'path';
+import { join, dirname, basename, extname, relative } from 'path';
 import chalk from 'chalk';
 import yaml from 'js-yaml';
 import { generateTest } from '../yaml/generator.js';
@@ -162,8 +162,14 @@ async function generateSingleFile(yamlFile, options = {}) {
 function getOutputPath(yamlFile) {
   // Convert: tests/auth/login.spec.yaml → .tests-gen/auth/login.spec.js
 
+  // Convert absolute path to relative path from cwd
+  let relativePath = yamlFile;
+  if (join(yamlFile).startsWith(process.cwd())) {
+    relativePath = relative(process.cwd(), yamlFile);
+  }
+
   // Replace extension
-  let jsFile = yamlFile.replace(/\.spec\.ya?ml$/, '.spec.js');
+  let jsFile = relativePath.replace(/\.spec\.ya?ml$/, '.spec.js');
 
   // If starts with tests/, strip that prefix
   if (jsFile.startsWith('tests/')) {

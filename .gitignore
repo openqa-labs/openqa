@@ -41,6 +41,9 @@ playwright/.cache/
 .features-gen/
 cucumber-report/
 
+# Playwright YAML generated files
+.tests-gen/
+
 # CucumberJS reports
 reports/
 

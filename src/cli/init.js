@@ -22,6 +22,12 @@ const FRAMEWORKS = {
     dependencies: ['openqa', 'playwright-bdd', '@playwright/test', 'typescript'],
     devDependencies: ['@cucumber/cucumber'],
   },
+  'playwright-yaml': {
+    name: 'Playwright-YAML',
+    description: 'Write tests in YAML with natural language',
+    dependencies: ['openqa', '@playwright/test'],
+    devDependencies: [],
+  },
   'cucumber': {
     name: 'Cucumber.js',
     description: 'Standalone Cucumber with Playwright',
@@ -39,11 +45,15 @@ export async function init(framework, options) {
       {
         type: 'list',
         name: 'framework',
-        message: 'Which BDD framework would you like to use?',
+        message: 'Which testing framework would you like to use?',
         choices: [
           {
             name: `${FRAMEWORKS['playwright-bdd'].name} - ${FRAMEWORKS['playwright-bdd'].description}`,
             value: 'playwright-bdd',
+          },
+          {
+            name: `${FRAMEWORKS['playwright-yaml'].name} - ${FRAMEWORKS['playwright-yaml'].description}`,
+            value: 'playwright-yaml',
           },
           {
             name: `${FRAMEWORKS['cucumber'].name} - ${FRAMEWORKS['cucumber'].description}`,
@@ -56,7 +66,7 @@ export async function init(framework, options) {
     framework = answers.framework;
   } else if (!FRAMEWORKS[framework]) {
     console.error(chalk.red(`\n❌ Unknown framework: ${framework}`));
-    console.log(chalk.yellow('Available frameworks: playwright-bdd, cucumber\n'));
+    console.log(chalk.yellow('Available frameworks: playwright-bdd, playwright-yaml, cucumber\n'));
     return;
   }
 
@@ -112,23 +122,35 @@ export async function init(framework, options) {
   // Create package.json if it doesn't exist
   const packageJsonPath = join(targetDir, 'package.json');
   if (!existsSync(packageJsonPath)) {
+    let scripts;
+    if (framework === 'playwright-bdd') {
+      scripts = {
+        bddgen: 'bddgen',
+        test: 'npm run bddgen && playwright test',
+        'test:ui': 'npm run bddgen && playwright test --ui',
+        'test:report': 'playwright show-report',
+      };
+    } else if (framework === 'playwright-yaml') {
+      scripts = {
+        generate: 'openqa generate',
+        test: 'openqa generate && playwright test',
+        'test:ui': 'openqa generate && playwright test --ui',
+        'test:headed': 'openqa generate && playwright test --headed',
+        'test:report': 'playwright show-report',
+      };
+    } else {
+      scripts = {
+        test: 'cucumber-js --format html:cucumber-test-results/cucumber-report.html',
+        'test:headed': 'HEADLESS=false cucumber-js --format html:cucumber-test-results/cucumber-report.html',
+        'test:report': 'open cucumber-test-results/cucumber-report.html',
+      };
+    }
+
     const packageJson = {
       name: 'openqa-project',
       version: '1.0.0',
       type: 'module',
-      scripts:
-        framework === 'playwright-bdd'
-          ? {
-              bddgen: 'bddgen',
-              test: 'npm run bddgen && playwright test',
-              'test:ui': 'npm run bddgen && playwright test --ui',
-              'test:report': 'playwright show-report',
-            }
-          : {
-              test: 'cucumber-js --format html:cucumber-test-results/cucumber-report.html',
-              'test:headed': 'HEADLESS=false cucumber-js --format html:cucumber-test-results/cucumber-report.html',
-              'test:report': 'open cucumber-test-results/cucumber-report.html',
-            },
+      scripts,
       dependencies: {},
       devDependencies: {},
     };
@@ -241,7 +263,7 @@ export async function init(framework, options) {
   }
 
   // Test run instructions
-  if (framework === 'playwright-bdd') {
+  if (framework === 'playwright-bdd' || framework === 'playwright-yaml') {
     console.log(chalk.cyan('  # Run the example test:'));
     console.log(chalk.cyan('  npm test\n'));
     console.log(chalk.cyan('  # View the test report:'));
@@ -251,6 +273,10 @@ export async function init(framework, options) {
     console.log(chalk.cyan('  npm test\n'));
   }
 
-  console.log(chalk.bold('Now you can write your .feature files and let AI handle the automation!\n'));
+  if (framework === 'playwright-yaml') {
+    console.log(chalk.bold('Now you can write your YAML tests and let AI handle the automation!\n'));
+  } else {
+    console.log(chalk.bold('Now you can write your .feature files and let AI handle the automation!\n'));
+  }
   console.log(chalk.gray('📚 Learn more: https://www.auto-browse.com/\n'));
 }

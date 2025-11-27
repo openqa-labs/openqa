@@ -1,0 +1,19 @@
+{
+  "name": "playwright-yaml-example",
+  "version": "1.0.0",
+  "description": "Example using OpenQA with YAML-based Playwright tests",
+  "type": "module",
+  "scripts": {
+    "generate": "openqa generate",
+    "test": "openqa generate && playwright test",
+    "test:ui": "openqa generate && playwright test --ui",
+    "test:headed": "openqa generate && playwright test --headed",
+    "test:report": "playwright show-report"
+  },
+  "dependencies": {
+    "openqa": "file:../.."
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "openqa-yaml-project",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "generate": "openqa generate",
+    "test": "openqa generate && playwright test",
+    "test:ui": "openqa generate && playwright test --ui",
+    "test:headed": "openqa generate && playwright test --headed",
+    "test:report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "openqa": "latest"
+  }
+}

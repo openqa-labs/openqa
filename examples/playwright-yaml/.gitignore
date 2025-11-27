@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Generated test files (YAML is source of truth)
+.tests-gen/
+
+# Playwright test results
+playwright-report/
+test-results/
+.playwright/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

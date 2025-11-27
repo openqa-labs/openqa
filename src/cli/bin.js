@@ -7,8 +7,8 @@
  */
 
 import { Command } from 'commander';
-import { init } from '../src/cli/init.js';
-import { generate } from '../src/cli/generate.js';
+import { init } from './init.js';
+import { generate } from './generate.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -18,7 +18,7 @@ const __dirname = dirname(__filename);
 
 // Read package.json for version
 const packageJson = JSON.parse(
-  readFileSync(join(__dirname, '../package.json'), 'utf-8')
+  readFileSync(join(__dirname, '../../package.json'), 'utf-8')
 );
 
 const program = new Command();
