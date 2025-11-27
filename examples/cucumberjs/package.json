@@ -1,0 +1,19 @@
+{
+  "name": "cucumberjs-example",
+  "version": "1.0.0",
+  "description": "Example using autobrowse-agent with CucumberJS and Playwright",
+  "type": "module",
+  "scripts": {
+    "test": "cucumber-js",
+    "test:headed": "HEADLESS=false cucumber-js --format html:reports/cucumber-report.html",
+    "test:report": "cucumber-js --format html:reports/cucumber-report.html"
+  },
+  "dependencies": {
+    "openqa": "file:../.."
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^11.0.1",
+    "@playwright/test": "^1.56.1",
+    "playwright": "^1.56.1"
+  }
+}
