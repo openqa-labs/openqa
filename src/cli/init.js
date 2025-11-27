@@ -33,8 +33,8 @@ const FRAMEWORKS = {
 export async function init(framework, options) {
   console.log(chalk.bold.cyan('\n🤖 OpenQA Project Initialization\n'));
 
-  // Prompt for framework if not provided
-  if (!framework || !FRAMEWORKS[framework]) {
+  // Prompt for framework (always prompt if not provided, making it truly optional)
+  if (!framework) {
     const answers = await inquirer.prompt([
       {
         type: 'list',
@@ -54,6 +54,10 @@ export async function init(framework, options) {
       },
     ]);
     framework = answers.framework;
+  } else if (!FRAMEWORKS[framework]) {
+    console.error(chalk.red(`\n❌ Unknown framework: ${framework}`));
+    console.log(chalk.yellow('Available frameworks: playwright-bdd, cucumber\n'));
+    return;
   }
 
   const config = FRAMEWORKS[framework];
@@ -124,17 +128,68 @@ export async function init(framework, options) {
   console.log(chalk.cyan('\n📦 Installing dependencies...\n'));
   const allDeps = [...config.dependencies, ...config.devDependencies];
 
+  let dependenciesInstalled = false;
   try {
     execSync(`npm install ${allDeps.join(' ')}`, {
       cwd: targetDir,
       stdio: 'inherit',
     });
     console.log(chalk.green('\n✓ Dependencies installed'));
+    dependenciesInstalled = true;
   } catch (error) {
     console.error(chalk.red('\n❌ Error installing dependencies'));
     console.log(chalk.yellow('\nYou can install them manually with:'));
     console.log(chalk.cyan(`  npm install ${allDeps.join(' ')}\n`));
   }
+
+  // Prompt to install Playwright browsers
+  let browsersInstalled = false;
+  if (dependenciesInstalled) {
+    const { installBrowsers } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'installBrowsers',
+        message: 'Install Playwright browsers now? (Chromium, ~150MB download)',
+        default: true,
+      },
+    ]);
+
+    if (installBrowsers) {
+      console.log(chalk.cyan('\n📥 Installing Chromium browser...\n'));
+      try {
+        execSync('npx playwright install chromium', {
+          cwd: targetDir,
+          stdio: 'inherit',
+        });
+        console.log(chalk.green('\n✓ Chromium browser installed'));
+        browsersInstalled = true;
+      } catch (error) {
+        console.error(chalk.red('\n❌ Error installing browsers'));
+        console.log(chalk.yellow('\nYou can install it manually with:'));
+        console.log(chalk.cyan('  npx playwright install chromium\n'));
+      }
+    }
+  }
+
+  // Prompt for AI provider selection
+  const { provider } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'provider',
+      message: 'Which AI provider will you use?',
+      choices: [
+        {
+          name: 'Anthropic (Claude Code, Anthropic API Key)',
+          value: 'anthropic',
+        },
+        {
+          name: 'Other Providers (OpenAI, Google, etc.)',
+          value: 'other',
+        },
+      ],
+      default: 'anthropic',
+    },
+  ]);
 
   // Success message
   console.log(chalk.bold.green('\n🎉 Project created successfully!\n'));
@@ -144,12 +199,35 @@ export async function init(framework, options) {
     console.log(chalk.cyan(`  cd ${targetDir}`));
   }
 
-  console.log(chalk.cyan('  # Set up authentication:'));
-  console.log(chalk.cyan('  # 1. Copy .env.example to .env'));
-  console.log(chalk.cyan('  cp .env.example .env'));
-  console.log(chalk.cyan('  # 2. Choose authentication method (see .env file)'));
-  console.log(chalk.cyan('  claude login                 # OR edit .env\n'));
+  // Browser installation instructions (if skipped)
+  if (!browsersInstalled && dependenciesInstalled) {
+    console.log(chalk.cyan('\n  # Install Playwright browsers:'));
+    console.log(chalk.cyan('  npx playwright install chromium\n'));
+  }
 
+  // Provider-specific authentication instructions
+  console.log(chalk.cyan('  # Set up AI authentication:\n'));
+
+  if (provider === 'anthropic') {
+    console.log(chalk.bold('  Choose ONE authentication method:\n'));
+    console.log(chalk.cyan('  A. Claude Code CLI (Recommended)'));
+    console.log(chalk.cyan('     claude login\n'));
+    console.log(chalk.cyan('  B. Anthropic API Key'));
+    console.log(chalk.cyan('     cp .env.example .env'));
+    console.log(chalk.cyan('     # Edit .env and add: ANTHROPIC_API_KEY=your_key\n'));
+    console.log(chalk.cyan('  C. Claude Code OAuth Token'));
+    console.log(chalk.cyan('     cp .env.example .env'));
+    console.log(chalk.cyan('     # Edit .env and add: CLAUDE_CODE_OAUTH_TOKEN=your_token\n'));
+  } else {
+    console.log(chalk.cyan('  cp .env.example .env'));
+    console.log(chalk.cyan('  # Edit .env file and configure:\n'));
+    console.log(chalk.cyan('  AGENT_TYPE=langchain'));
+    console.log(chalk.cyan('  DEFAULT_PROVIDER=openai          # or \'google\''));
+    console.log(chalk.cyan('  OPENAI_API_KEY=your_key          # or GOOGLE_API_KEY\n'));
+    console.log(chalk.gray('  # Optional: OPENAI_MODEL, RECURSION_LIMIT, etc.\n'));
+  }
+
+  // Test run instructions
   if (framework === 'playwright-bdd') {
     console.log(chalk.cyan('  # Run the example test:'));
     console.log(chalk.cyan('  npm test\n'));

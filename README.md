@@ -14,48 +14,17 @@ AI-powered browser automation with shared context using Claude Agent SDK and Pla
 
 ## Quick Start
 
-### Step 1: Setup Provider
-
-**Option 1: Claude Code Agent (Recommended)**
-
-Choose ONE authentication method:
+**New Project (Playwright-BDD or Cucumber.js):**
 
 ```bash
-# A. Claude Code CLI (recommended)
-claude login
-
-# B. API Key
-export ANTHROPIC_API_KEY=your_key
-
-# C. .env file
-echo "ANTHROPIC_API_KEY=your_key" > .env
-# OR
-echo "CLAUDE_CODE_OAUTH_TOKEN=your_token" > .env
+npx openqa init
 ```
 
-**Option 2: Other Providers (OpenAI, Google)**
-
-Create `.env` file:
-```bash
-AGENT_TYPE=langchain
-DEFAULT_PROVIDER=openai  # or 'google', 'anthropic'
-OPENAI_API_KEY=your_key  # or GOOGLE_API_KEY, ANTHROPIC_API_KEY
-
-# Optional
-OPENAI_MODEL=gpt-4o      # or GOOGLE_MODEL, ANTHROPIC_MODEL
-RECURSION_LIMIT=100      # default: 100
-```
-
----
-
-### Step 2: Choose Your Setup
-
-**New Playwright-BDD Project:**
-```bash
-npx openqa init playwright-bdd
-cd my-project
-npm test
-```
+This single command will:
+1. Prompt for framework selection (Playwright-BDD or Cucumber.js)
+2. Install dependencies and Playwright browsers
+3. Prompt for AI provider (Anthropic or Other)
+4. Show tailored setup instructions
 
 Write `.feature` files in plain English - AI handles everything!
 
@@ -68,7 +37,9 @@ Feature: Shopping
     Then I should see "Order confirmed"
 ```
 
-**Or choose an integration:**
+---
+
+**Integrations with Existing Projects:**
 
 - **[With Existing Playwright-BDD](#with-existing-playwright-bdd)**
 - **[With Existing Cucumber.js](#with-existing-cucumberjs)**
@@ -78,11 +49,30 @@ Feature: Shopping
 
 ## With Existing Playwright-BDD
 
-> **Step 1**: [Setup Provider](#step-1-setup-provider) ← Complete this first
-
-**Step 2**: Install OpenQA
+**Step 1**: Install OpenQA
 ```bash
 npm install openqa
+```
+
+**Step 2**: Setup authentication
+
+Choose ONE method:
+```bash
+# A. Claude Code CLI (recommended)
+claude login
+
+# B. API Key
+export ANTHROPIC_API_KEY=your_key
+
+# C. .env file
+echo "ANTHROPIC_API_KEY=your_key" > .env
+```
+
+For OpenAI/Google, create `.env`:
+```bash
+AGENT_TYPE=langchain
+DEFAULT_PROVIDER=openai  # or 'google'
+OPENAI_API_KEY=your_key
 ```
 
 **Step 3**: Replace step definitions
@@ -100,11 +90,30 @@ npm test
 
 ## With Existing Cucumber.js
 
-> **Step 1**: [Setup Provider](#step-1-setup-provider) ← Complete this first
-
-**Step 2**: Install OpenQA
+**Step 1**: Install OpenQA
 ```bash
 npm install openqa @playwright/test
+```
+
+**Step 2**: Setup authentication
+
+Choose ONE method:
+```bash
+# A. Claude Code CLI (recommended)
+claude login
+
+# B. API Key
+export ANTHROPIC_API_KEY=your_key
+
+# C. .env file
+echo "ANTHROPIC_API_KEY=your_key" > .env
+```
+
+For OpenAI/Google, create `.env`:
+```bash
+AGENT_TYPE=langchain
+DEFAULT_PROVIDER=openai  # or 'google'
+OPENAI_API_KEY=your_key
 ```
 
 **Step 3**: Replace step definitions
@@ -123,11 +132,30 @@ npm test
 
 ## With Existing Playwright
 
-> **Step 1**: [Setup Provider](#step-1-setup-provider) ← Complete this first
-
-**Step 2**: Install OpenQA
+**Step 1**: Install OpenQA
 ```bash
 npm install openqa
+```
+
+**Step 2**: Setup authentication
+
+Choose ONE method:
+```bash
+# A. Claude Code CLI (recommended)
+claude login
+
+# B. API Key
+export ANTHROPIC_API_KEY=your_key
+
+# C. .env file
+echo "ANTHROPIC_API_KEY=your_key" > .env
+```
+
+For OpenAI/Google, create `.env`:
+```bash
+AGENT_TYPE=langchain
+DEFAULT_PROVIDER=openai  # or 'google'
+OPENAI_API_KEY=your_key
 ```
 
 **Step 3**: Use in your tests
