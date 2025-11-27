@@ -4,7 +4,7 @@
   "description": "AI-powered Browser automation using playwright mcp",
   "type": "module",
   "bin": {
-    "openqa": "./bin/cli.js"
+    "openqa": "./src/cli/bin.js"
   },
   "exports": {
     ".": "./src/index.js",
@@ -35,7 +35,6 @@
   "license": "MIT",
   "files": [
     "src/",
-    "bin/",
     "README.md",
     "LICENSE"
   ],

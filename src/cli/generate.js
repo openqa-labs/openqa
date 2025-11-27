@@ -4,7 +4,7 @@
  * Generates Playwright .spec.js files from YAML test definitions.
  */
 
-import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSync } from 'fs';
 import { join, dirname, basename, extname } from 'path';
 import chalk from 'chalk';
 import yaml from 'js-yaml';
@@ -139,8 +139,12 @@ async function generateSingleFile(yamlFile, options = {}) {
   // Generate code
   const jsCode = generateTest(yamlContent, basename(yamlFile));
 
-  // Determine output path: replace .spec.yaml with .spec.js
-  const outputFile = yamlFile.replace(/\.spec\.ya?ml$/, '.spec.js');
+  // Determine output path: Output to .tests-gen/ directory
+  const outputFile = getOutputPath(yamlFile);
+
+  // Auto-create output directory if missing
+  const outputDir = dirname(outputFile);
+  mkdirSync(outputDir, { recursive: true });
 
   // Write file
   writeFileSync(outputFile, jsCode, 'utf8');
@@ -148,6 +152,26 @@ async function generateSingleFile(yamlFile, options = {}) {
   if (verbose) {
     console.log(chalk.green(`  ✓ Generated ${basename(outputFile)}\n`));
   }
+}
+
+/**
+ * Determine output path for generated test file
+ * @param {string} yamlFile - Path to YAML file
+ * @returns {string} - Path to output JS file in .tests-gen/
+ */
+function getOutputPath(yamlFile) {
+  // Convert: tests/auth/login.spec.yaml → .tests-gen/auth/login.spec.js
+
+  // Replace extension
+  let jsFile = yamlFile.replace(/\.spec\.ya?ml$/, '.spec.js');
+
+  // If starts with tests/, strip that prefix
+  if (jsFile.startsWith('tests/')) {
+    jsFile = jsFile.substring(6);  // Remove 'tests/'
+  }
+
+  // Prepend .tests-gen/
+  return join('.tests-gen', jsFile);
 }
 
 /**
