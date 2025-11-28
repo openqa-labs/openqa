@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './.tests-gen',  // Generated test files
@@ -18,7 +18,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: {},
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
 });

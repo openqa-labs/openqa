@@ -37,6 +37,11 @@ export function generateTest(yamlContent, sourceFile = 'test.yaml') {
   // Start describe block
   code += `test.describe('${spec.name}', () => {\n`;
 
+  // Add test.use({ baseURL }) if url is specified
+  if (spec.url) {
+    code += `  test.use({ baseURL: '${spec.url}' });\n\n`;
+  }
+
   // Add config if present
   if (spec.config) {
     code += generateConfig(spec.config);
@@ -75,6 +80,11 @@ export function generateTest(yamlContent, sourceFile = 'test.yaml') {
  */
 function generateConfig(config) {
   let code = '';
+
+  // Handle baseURL in config (alternative to top-level url)
+  if (config.baseURL && !code.includes('test.use')) {
+    code += `  test.use({ baseURL: '${config.baseURL}' });\n\n`;
+  }
 
   if (config.timeout || config.retries) {
     code += `  test.describe.configure({\n`;

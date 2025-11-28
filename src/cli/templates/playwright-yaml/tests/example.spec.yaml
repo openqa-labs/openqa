@@ -5,9 +5,9 @@ config:
   timeout: 180000
 
 tests:
-  - name: Sample test
+  - name: Add a todo item
     tags: [smoke]
     steps:
-      - Navigate to the home page
+      - Navigate to the TodoMVC home page
       - Add a new todo item "Learn OpenQA"
       - Verify that "Learn OpenQA" appears in the todo list

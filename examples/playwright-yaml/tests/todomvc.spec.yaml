@@ -1,0 +1,30 @@
+name: TodoMVC and Form Automation
+url: https://demo.playwright.dev/todomvc/
+
+config:
+  timeout: 180000
+
+tests:
+  - name: Add todo item
+    tags: [smoke]
+    steps:
+      - Navigate to the TodoMVC home page
+      - Add a new todo item "Buy groceries" on the web page
+      - Verify that "Buy groceries" appears in the todo list
+
+  - name: Complete todo item
+    tags: [smoke]
+    steps:
+      - Navigate to the TodoMVC home page
+      - Add a new todo item with text "Complete this task"
+      - Mark "Complete this task" as completed on the web page
+      - Verify the todo "Complete this task" is marked as completed
+
+  - name: Filter todos
+    tags: [smoke]
+    steps:
+      - Navigate to the TodoMVC home page
+      - Add three todo items "Task 1", "Task 2", and "Task 3" on the web page
+      - Mark the first todo as completed
+      - Click the Active filter to show only active todos on the web page
+      - Verify that 2 active todos are shown

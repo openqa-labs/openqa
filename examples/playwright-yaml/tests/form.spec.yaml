@@ -1,0 +1,14 @@
+name: Form Automation
+url: https://httpbin.org/forms/post
+
+config:
+  timeout: 180000
+
+tests:
+  - name: Fill and submit pizza order form
+    tags: [smoke, forms]
+    steps:
+      - Navigate to the pizza order form page
+      - Fill in the pizza order form with customer name "John Doe", telephone "555-0123", email "john@example.com", select Medium size, select Bacon topping, and fill delivery time as "18:00"
+      - Submit the pizza order form
+      - Verify I am on the success page

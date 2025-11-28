@@ -58,6 +58,10 @@ export function validateSpec(spec) {
  * @param {string[]} errors - Array to collect errors
  */
 function validateConfig(config, errors) {
+  if (config.baseURL !== undefined && typeof config.baseURL !== 'string') {
+    errors.push('config.baseURL must be a string');
+  }
+
   if (config.timeout !== undefined && typeof config.timeout !== 'number') {
     errors.push('config.timeout must be a number');
   }
