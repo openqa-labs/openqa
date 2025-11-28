@@ -1,16 +1,5 @@
-import { test, expect } from "@playwright/test";
-import { runAgent } from "openqa";
-
-/**
- * TodoMVC and Form Tests
- *
- * Demonstrates AI agent automation with:
- * - 3 TodoMVC tests (add, complete, filter)
- * - 1 httpbin form test
- * - Parallel execution (4 tests)
- * - Shared browser context between test and agent
- * - Uses unified agent interface (defaults to Claude, configurable via AGENT_TYPE env var)
- */
+import { test } from '@playwright/test';
+import { runAgent } from 'openqa';
 
 test.describe("Debug TodoMVC Test", () => {
   test("Debug: Add todo with verbose output", async ({ page, context }) => {
