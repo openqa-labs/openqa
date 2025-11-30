@@ -1,4 +1,4 @@
-import { createAgent } from 'langchain';
+import { createAgent, createMiddleware } from 'langchain';
 import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
@@ -16,6 +16,30 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..');
 config({ path: join(rootDir, '.env') });
+
+/**
+ * Error handling middleware that logs tool errors and re-throws them
+ * This allows for error analysis while maintaining error propagation
+ */
+const handleToolErrors = createMiddleware({
+  name: "HandleToolErrors",
+  wrapToolCall: async (request, handler) => {
+    try {
+      return await handler(request);
+    } catch (error) {
+      // Log the complete error for analysis
+      console.error(`\n❌ TOOL ERROR [${request.toolCall.name}]:`, {
+        tool: request.toolCall.name,
+        args: request.toolCall.args,
+        error: error.message,
+        stack: error.stack
+      });
+      
+      // Re-throw to allow upstream error handling and analysis
+      throw error;
+    }
+  },
+});
 
 /**
  * LangChain-based Browser Agent with Multi-Provider Support
@@ -242,7 +266,8 @@ export async function runLangChainAgent(prompt, browserContext, options = {}) {
       All user requests must be performed using the Playwright MCP server tools only. \
       Do not assume or use your own methods. \
       Note, The user may provide instructions in gherkin format for browser actions.',
-      checkpointer: sessionData.checkpointer
+      checkpointer: sessionData.checkpointer,
+      middleware: [handleToolErrors]
     });
 
     // Configure session for this invocation
