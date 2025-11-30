@@ -59,7 +59,9 @@ let autoSetupEnabled = false;
  */
 export function enableAutoBrowserSetup(options = {}) {
   autoSetupEnabled = true;
-  const browserOptions = options.browserOptions || { headless: true };
+  // Respect HEADLESS environment variable, default to true if not set
+  const headless = process.env.HEADLESS !== 'false';
+  const browserOptions = options.browserOptions || { headless };
 
   Before(async function() {
     browser = await chromium.launch(browserOptions);

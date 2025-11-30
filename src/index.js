@@ -1,14 +1,10 @@
 import { runClaudeAgent } from './claude-agent.js';
 import { runLangChainAgent } from './langchain-agent.js';
 import { config } from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 
-// Load environment variables from root .env file
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const rootDir = join(__dirname, '..');
-config({ path: join(rootDir, '.env') });
+// Load environment variables from project's .env file (where the user runs the tests)
+// This will look in the current working directory, not the package directory
+config();
 
 /**
  * Unified Browser Agent Interface
