@@ -30,11 +30,19 @@ const handleToolErrors = createMiddleware({
       // Log the complete error for analysis
       console.error(`\n❌ TOOL ERROR [${request.toolCall.name}]:`, {
         tool: request.toolCall.name,
+        content: request.toolCall.content,
         args: request.toolCall.args,
         error: error.message,
         stack: error.stack
       });
-      
+
+      // Try to extract a cleaner error message from the MCP tool error
+      // Format: "MCP tool 'tool_name' on server 'server_name' returned an error: ### Result\nError message"
+      const match = error.message.match(/MCP tool '.*' on server '.*' returned an error: ### Result\n(.*)/s);
+      if (match && match[1]) {
+        throw new Error(`Tool '${request.toolCall.name}' failed: ${match[1].trim()}`);
+      }
+
       // Re-throw to allow upstream error handling and analysis
       throw error;
     }
@@ -187,7 +195,7 @@ export async function runLangChainAgent(prompt, browserContext, options = {}) {
   const model = options.model;
   const verbose = options.verbose !== false;
   const returnUsage = options.returnUsage || false;
-  
+
   // Parse recursion limit with validation
   let recursionLimit = 100; // default
   if (options.recursionLimit) {
@@ -200,7 +208,7 @@ export async function runLangChainAgent(prompt, browserContext, options = {}) {
       console.warn(`⚠️  Invalid RECURSION_LIMIT env var: "${process.env.RECURSION_LIMIT}". Using default: 100\n`);
     }
   }
-  
+
   const modelConfig = options.modelConfig || {};
 
   // Track usage for this specific agent call
@@ -315,7 +323,7 @@ export async function runLangChainAgent(prompt, browserContext, options = {}) {
 
             if (content.trim()) {
               console.log('💬 Assistant:', content.substring(0, 200) +
-                         (content.length > 200 ? '...' : ''));
+                (content.length > 200 ? '...' : ''));
               console.log();
             }
           }
@@ -388,7 +396,7 @@ export async function runLangChainAgent(prompt, browserContext, options = {}) {
  * @param {BrowserContext} browserContext - The browser context to reset
  * @returns {Promise<string|null>} - The session ID that was reset, or null if none existed
  */
-runLangChainAgent.resetSession = async function(browserContext) {
+runLangChainAgent.resetSession = async function (browserContext) {
   const sessionData = contextSessionMap.get(browserContext);
   if (sessionData) {
     // Cleanup MCP connections
