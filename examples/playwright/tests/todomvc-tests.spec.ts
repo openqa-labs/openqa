@@ -2,28 +2,30 @@ import { test, expect } from "@playwright/test";
 import { runAgent } from "openqa";
 
 /**
- * TodoMVC and Form Tests
+ * TodoMVC Tests
  *
  * Demonstrates AI agent automation with:
- * - 3 TodoMVC tests (add, complete, filter)
- * - 1 httpbin form test
- * - Parallel execution (4 tests)
+ * - 1 failing test (Add todo item - intentionally fails to demonstrate error handling)
+ * - 1 passing test (Filter todos - demonstrates complex multi-step automation)
  * - Shared browser context between test and agent
  * - Uses unified agent interface (defaults to Claude, configurable via AGENT_TYPE env var)
  */
 
-test.describe("TodoMVC and Form Automation", () => {
-  test("Add todo item", async ({ page, context }) => {
-    await runAgent('Navigate to "https://demo.playwright.dev/todomvc/"', context);
-    await runAgent('Add a new todo item "Buy groceries" on the web page', context);
-    await runAgent('Verify that "Buy groceries" is in the todo list', context);
-  });
-
-  test("Complete todo item", async ({ page, context }) => {
-    await runAgent('Navigate to "https://demo.playwright.dev/todomvc/"', context);
-    await runAgent('Add a new todo item with text "Complete this task"', context);
-    await runAgent('Mark "Complete this task" as completed on the web page', context);
-    await runAgent('Verify that the todo "Complete this task" is marked as completed', context);
+test.describe("TodoMVC Automation", () => {
+  test("Add todo item (intentionally failing)", async ({ page, context }) => {
+    await test.step('Navigate to the TodoMVC home page', async () => {
+      await runAgent('Navigate to the TodoMVC home page https://demo.playwright.dev/todomvc/', context, { verbose: true });
+    });
+    await test.step('Add a new todo item "Buy groceries" on the web page', async () => {
+      await runAgent('Add a new todo item "Buy groceries" on the web page', context, { verbose: true });
+    });
+    await test.step('Verify that "Buy fruits" appears in the todo list', async () => {
+      // Note: This step intentionally fails - we added "Buy groceries" but verify "Buy fruits"
+      await runAgent('Verify that "Buy fruits" appears in the todo list', context, { verbose: true });
+    });
+    await test.step('Add a new todo item "Buy veggies" on the web page', async () => {
+      await runAgent('Add a new todo item "Buy veggies" on the web page', context, { verbose: true });
+    });
   });
 
   test("Filter todos", async ({ page, context }) => {
@@ -32,13 +34,6 @@ test.describe("TodoMVC and Form Automation", () => {
     await runAgent('Mark the first todo as completed', context);
     await runAgent('Click the Active filter to show only active todos on the web page', context);
     await runAgent('Verify that there are 2 active todos', context);
-  });
-
-  test("Fill and submit pizza order form", async ({ page, context }) => {
-    await runAgent('Navigate to "https://httpbin.org/forms/post"', context);
-    await runAgent('Fill in the pizza order form with customer name "John Doe", telephone "555-0123", email "john@example.com", select Medium size, select Bacon topping, and fill delivery time as "18:00"', context);
-    await runAgent('Submit the pizza order form', context);
-    await runAgent('Verify that the success page is displayed', context);
   });
 });
 

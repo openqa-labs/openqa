@@ -1,12 +1,14 @@
-Feature: TodoMVC Testing
+Feature: TodoMVC Automation
 
-  Scenario: Add a todo item
+  Scenario: Add todo item (intentionally failing)
     Given I navigate to "https://demo.playwright.dev/todomvc/"
     When I add a new todo item "Buy groceries" on the web page
-    Then I should see "Buy groceries" in the todo list
+    Then I should see "Buy fruits" in the todo list
+    When I add a new todo item "Buy veggies" on the web page
 
-  Scenario: Complete a todo
+  Scenario: Filter todos
     Given I navigate to "https://demo.playwright.dev/todomvc/"
-    When I add a new todo item with text "Complete this task"
-    And I mark "Complete this task" as completed on the web page
-    Then the todo "Complete this task" should be marked as completed
+    When I add three todo items: "Task 1", "Task 2", and "Task 3" on the web page
+    And I mark the first todo as completed
+    And I click the Active filter to show only active todos on the web page
+    Then I should see 2 active todos
