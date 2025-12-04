@@ -168,7 +168,7 @@ async function createPlaywrightTools(browserContext) {
 /**
  * Run LangChain agent with a specific browser context and automatic session management
  * @param {string} prompt - Natural language instruction
- * @param {BrowserContext} browserContext - Playwright browser context from test
+ * @param {Page|BrowserContext} pageOrContext - Playwright page or browser context from test
  * @param {object} options - Optional configuration
  * @param {string} options.provider - AI provider: 'anthropic', 'openai', or 'google'
  *                                    Priority: options.provider > DEFAULT_PROVIDER env var > 'anthropic'
@@ -190,7 +190,19 @@ async function createPlaywrightTools(browserContext) {
  * - OPENAI_MODEL: Default model for OpenAI (e.g., 'gpt-4o')
  * - GOOGLE_MODEL: Default model for Google (e.g., 'gemini-2.5-flash')
  */
-export async function runLangChainAgent(prompt, browserContext, options = {}) {
+export async function runLangChainAgent(prompt, pageOrContext, options = {}) {
+  // Handle both Page and Context inputs
+  let browserContext;
+  let inputPage = null;
+  if (pageOrContext.context && typeof pageOrContext.context === 'function') {
+    // It's a Page object - extract the context
+    inputPage = pageOrContext;
+    browserContext = pageOrContext.context();
+  } else {
+    // It's already a BrowserContext
+    browserContext = pageOrContext;
+  }
+
   const provider = options.provider || process.env.DEFAULT_PROVIDER || 'anthropic';
   const model = options.model;
   const verbose = options.verbose !== false;
@@ -218,6 +230,22 @@ export async function runLangChainAgent(prompt, browserContext, options = {}) {
 
   if (verbose) {
     console.log(`🤖 Running LangChain agent (${provider}) with shared context: "${prompt}"\n`);
+
+    // Log page management details
+    const pages = browserContext.pages();
+    console.log(`📄 PAGE CONTEXT INFO:`);
+    console.log(`├─ Input type: ${inputPage ? 'Page' : 'BrowserContext'}`);
+    console.log(`├─ Pages in context: ${pages.length}`);
+    if (inputPage) {
+      const inputPageUrl = inputPage.url();
+      const inputPageIndex = pages.indexOf(inputPage);
+      console.log(`├─ Input page URL: ${inputPageUrl}`);
+      console.log(`├─ Input page index in context: ${inputPageIndex}`);
+    }
+    pages.forEach((p, i) => {
+      console.log(`├─ Page ${i}: ${p.url()}`);
+    });
+    console.log(`└─ MCP will detect ${pages.length} existing page(s)\n`);
   }
 
   try {

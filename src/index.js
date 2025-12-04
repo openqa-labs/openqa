@@ -22,7 +22,7 @@ config();
 /**
  * Run browser agent with configurable backend
  * @param {string} prompt - Natural language instruction
- * @param {BrowserContext} browserContext - Playwright browser context from test
+ * @param {Page|BrowserContext} pageOrContext - Playwright page or browser context from test
  * @param {object} options - Optional configuration
  * @param {string} options.agentType - Agent type: 'claude' or 'langchain'
  * @param {string} options.provider - AI provider (for langchain): 'anthropic', 'openai', or 'google'
@@ -32,7 +32,7 @@ config();
  * @param {object} options.modelConfig - Additional model configuration
  * @returns {Promise<string|object>} - The final result or result with usage data
  */
-export async function runAgent(prompt, browserContext, options = {}) {
+export async function runAgent(prompt, pageOrContext, options = {}) {
   // Determine which agent to use
   // Priority: options.agentType > AGENT_TYPE env var > default (claude)
   const agentType = options.agentType || process.env.AGENT_TYPE || 'claude';
@@ -46,10 +46,10 @@ export async function runAgent(prompt, browserContext, options = {}) {
   // Route to the appropriate agent
   switch (agentType.toLowerCase()) {
     case 'claude':
-      return runClaudeAgent(prompt, browserContext, options);
+      return runClaudeAgent(prompt, pageOrContext, options);
 
     case 'langchain':
-      return runLangChainAgent(prompt, browserContext, options);
+      return runLangChainAgent(prompt, pageOrContext, options);
 
     default:
       throw new Error(

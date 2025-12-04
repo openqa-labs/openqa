@@ -23,11 +23,11 @@ const contextSessionMap = new WeakMap();
 /**
  * Run Claude agent with a specific browser context and automatic session management
  * @param {string} prompt - Natural language instruction
- * @param {BrowserContext} browserContext - Playwright browser context from test
+ * @param {Page|BrowserContext} pageOrContext - Playwright page or browser context from test
  * @param {object} options - Optional configuration
  * @returns {Promise<string>} - The final result
  */
-export async function runClaudeAgent(prompt, browserContext, options = {}) {
+export async function runClaudeAgent(prompt, pageOrContext, options = {}) {
   const verbose = options.verbose !== false;
   const returnUsage = options.returnUsage || false;
 
@@ -37,8 +37,36 @@ export async function runClaudeAgent(prompt, browserContext, options = {}) {
   let totalUsage = null;
   let stepCount = 0;
 
+  // Handle both Page and Context inputs
+  let browserContext;
+  let inputPage = null;
+  if (pageOrContext.context && typeof pageOrContext.context === 'function') {
+    // It's a Page object - extract the context
+    inputPage = pageOrContext;
+    browserContext = pageOrContext.context();
+  } else {
+    // It's already a BrowserContext
+    browserContext = pageOrContext;
+  }
+
   if (verbose) {
     console.log(`🤖 Running Claude agent with shared context: "${prompt}"\n`);
+
+    // Log page management details
+    const pages = browserContext.pages();
+    console.log(`📄 PAGE CONTEXT INFO:`);
+    console.log(`├─ Input type: ${inputPage ? 'Page' : 'BrowserContext'}`);
+    console.log(`├─ Pages in context: ${pages.length}`);
+    if (inputPage) {
+      const inputPageUrl = inputPage.url();
+      const inputPageIndex = pages.indexOf(inputPage);
+      console.log(`├─ Input page URL: ${inputPageUrl}`);
+      console.log(`├─ Input page index in context: ${inputPageIndex}`);
+    }
+    pages.forEach((p, i) => {
+      console.log(`├─ Page ${i}: ${p.url()}`);
+    });
+    console.log(`└─ MCP will detect ${pages.length} existing page(s)\n`);
   }
 
   try {
@@ -59,7 +87,7 @@ export async function runClaudeAgent(prompt, browserContext, options = {}) {
       systemPrompt: {
         type: 'preset',
         preset: 'claude_code',
-        append: 'All user requests must be performed using the Playwright MCP server tools only, do not use any other methods or assume or use your own methods.'
+        append: 'You are a Playwright Test Agent tasked with running playwright tests. All user requests must be performed using the Playwright MCP server tools only, do not use any other methods or assume or use your own methods. You should always report accurate test execution results. When the instruction is about to check, verify or assert you must run the verification or assertion tools and throw the exception if step failed'
       },
       // Use the programmatic MCP server instead of CLI-based one
       mcpServers: {
