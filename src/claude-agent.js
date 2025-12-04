@@ -111,6 +111,51 @@ export async function runClaudeAgent(prompt, pageOrContext, options = {}) {
       queryOptions.resume = existingSessionId;
     }
 
+    // Add tool error handling hook (similar to langchain-agent.js middleware)
+    queryOptions.hooks = {
+      PostToolUseFailure: [{
+        hooks: [async (input, toolUseID, options) => {
+          // Track this failure to throw after query completes
+          toolFailures.push({
+            tool_name: input.tool_name,
+            error: input.error,
+            tool_input: input.tool_input
+          });
+
+          // Log the complete error for analysis (matching langchain-agent.js behavior)
+          if (verbose) {
+            console.error(`\n❌ TOOL ERROR [${input.tool_name}]:`, {
+              tool: input.tool_name,
+              tool_input: input.tool_input,
+              tool_use_id: input.tool_use_id,
+              error: input.error,
+              is_interrupt: input.is_interrupt
+            });
+          }
+
+          // Try to extract cleaner error message from MCP tool error
+          // Format: "MCP tool 'tool_name' on server 'server_name' returned an error: ### Result\nError message"
+          const match = input.error.match(/MCP tool '.*' on server '.*' returned an error: ### Result\n(.*)/s);
+
+          let additionalContext = '';
+          if (match && match[1]) {
+            const cleanError = match[1].trim();
+            additionalContext = `Tool '${input.tool_name}' failed: ${cleanError}`;
+
+            if (verbose) {
+              console.error(`\n📝 Cleaned error message: ${cleanError}\n`);
+            }
+          }
+
+          // Return hook output with additional context
+          return {
+            hookEventName: 'PostToolUseFailure',
+            additionalContext: additionalContext || undefined
+          };
+        }]
+      }]
+    };
+
     const result = query({
       prompt: prompt,
       options: queryOptions
@@ -122,6 +167,7 @@ export async function runClaudeAgent(prompt, pageOrContext, options = {}) {
 
     let finalResult = '';
     let currentSessionId = existingSessionId;
+    let toolFailures = [];  // Track tool failures to throw after query completes
 
     for await (const message of result) {
       switch (message.type) {
@@ -206,6 +252,17 @@ export async function runClaudeAgent(prompt, pageOrContext, options = {}) {
       }
 
       console.log(`└─ Session ID: ${currentSessionId}\n`);
+    }
+
+    // Throw if any tool failures occurred (matching langchain-agent.js behavior)
+    if (toolFailures.length > 0) {
+      const firstFailure = toolFailures[0];
+
+      // Try to extract clean error message
+      const match = firstFailure.error.match(/MCP tool '.*' on server '.*' returned an error: ### Result\n(.*)/s);
+      const cleanError = match && match[1] ? match[1].trim() : firstFailure.error;
+
+      throw new Error(`Tool '${firstFailure.tool_name}' failed: ${cleanError}`);
     }
 
     // Return based on returnUsage option
