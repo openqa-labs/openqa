@@ -61,16 +61,39 @@ export class ClaudeAgent {
 
             const queryOptions = this._buildQueryOptions(mcpServer, existingSessionId, abortController);
 
-            // Hook for system-level tool failures
+            // Track Playwright tool calls to enforce at least one per step
+            let playwrightToolCount = 0;
+            let stopRetryCount = 0;
+            const MAX_STOP_RETRIES = 2;
+
+            // Hooks for tool tracking and enforcement
             queryOptions.hooks = {
+                // Track successful Playwright tool calls
+                PostToolUse: [{
+                    hooks: [async (input) => {
+                        // Count Playwright MCP tool calls
+                        if (input.tool_name && input.tool_name.startsWith('mcp__playwright__')) {
+                            playwrightToolCount++;
+                            if (this.verbose) {
+                                console.log(`🔧 Playwright tool called: ${input.tool_name} (count: ${playwrightToolCount})`);
+                            }
+                        }
+                        return { hookEventName: 'PostToolUse' };
+                    }]
+                }],
+
+                // Handle tool failures
                 PostToolUseFailure: [{
                     hooks: [async (input) => {
+                        // Count failed Playwright tools too (they were still called)
+                        if (input.tool_name && input.tool_name.startsWith('mcp__playwright__')) {
+                            playwrightToolCount++;
+                        }
+
                         this.logger.logToolError(input);
 
                         const match = input.error.match(/MCP tool '.*' on server '.*' returned an error: ### Result\n(.*)/s);
                         let cleanError = match && match[1] ? match[1].trim() : input.error;
-
-                        // Further clean up - remove any remaining markdown artifacts
                         cleanError = cleanError.replace(/^### Result\n/, '').trim();
 
                         toolFailureError = new Error(`Tool '${input.tool_name}' failed: ${cleanError}`);
@@ -84,6 +107,28 @@ export class ClaudeAgent {
                             hookEventName: 'PostToolUseFailure',
                             additionalContext: `Tool '${input.tool_name}' failed: ${cleanError}`
                         };
+                    }]
+                }],
+
+                // Enforce tool usage - reject responses with no Playwright tool calls
+                Stop: [{
+                    hooks: [async (input) => {
+                        if (playwrightToolCount === 0 && stopRetryCount < MAX_STOP_RETRIES) {
+                            stopRetryCount++;
+                            if (this.verbose) {
+                                console.log(`\n⚠️  No Playwright tool called! Forcing retry (${stopRetryCount}/${MAX_STOP_RETRIES})...\n`);
+                            }
+                            return {
+                                continue: true, // Don't stop, force agent to continue
+                                systemMessage: `CRITICAL: You MUST call a Playwright MCP tool (like browser_snapshot, browser_click, browser_type, or browser_verify_text_visible) to complete this task. Do NOT respond based on cached page state. You have not called any Playwright tool yet. Call the appropriate tool NOW.`
+                            };
+                        }
+
+                        if (this.verbose && playwrightToolCount > 0) {
+                            console.log(`✅ Stop hook: ${playwrightToolCount} Playwright tool(s) called\n`);
+                        }
+
+                        return { continue: false }; // Allow stop
                     }]
                 }]
             };
@@ -225,7 +270,12 @@ export class ClaudeAgent {
             systemPrompt: {
                 type: 'preset',
                 preset: 'claude_code',
-                append: `All user requests must be performed using the Playwright MCP server tools only, do not use any other methods or assume.`
+                append: `You are a Playwright Test Agent. CRITICAL RULES:
+1. You MUST call at least one Playwright MCP tool for EVERY user instruction
+2. NEVER respond based on cached or remembered page state
+3. For verification steps (should see, verify, check, assert): ALWAYS call browser_verify_text_visible or browser_snapshot
+4. For actions (click, type, navigate): ALWAYS call the corresponding browser_* tool
+5. The test will FAIL if you respond without calling a Playwright tool`
             },
             mcpServers: {
                 playwright: {
