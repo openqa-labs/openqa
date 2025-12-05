@@ -77,8 +77,11 @@ export class Logger {
     }
 
     logUserMessage(message) {
-        if (!this.verbose) return;
-        console.log('📨 User Message:', JSON.stringify(message, null, 2));
+        // This is too verbose for normal operation - only log in debug mode
+        // User can set AGENT_DEBUG=true to enable this
+        if (process.env.AGENT_DEBUG === 'true') {
+            console.log('📨 User Message:', JSON.stringify(message, null, 2));
+        }
     }
 
     logResult(result) {
@@ -106,9 +109,13 @@ export class Logger {
     }
 
     logToolFailure(toolName, errorText) {
-        if (!this.verbose) return;
-        console.error(`\n❌ TOOL FAILURE [${toolName}]:`, errorText);
-        console.error(`🛑 Aborting query due to tool failure\n`);
+        // Clean up the error text - remove markdown artifacts
+        const cleanError = errorText.replace(/^### Result\n/, '').trim();
+
+        console.error(`\n❌ Tool '${toolName}' failed: ${cleanError}`);
+        if (this.verbose) {
+            console.error(`🛑 Aborting query due to tool failure\n`);
+        }
     }
 
     logToolError(input) {

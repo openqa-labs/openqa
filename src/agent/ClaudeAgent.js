@@ -3,6 +3,15 @@ import { query } from '@anthropic-ai/claude-agent-sdk';
 import { createConnection } from '@playwright/mcp';
 import { Logger } from './Logger.js';
 import { sessionManager } from './SessionManager.js';
+import { config } from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// Load environment variables from project root .env file
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const projectRoot = join(__dirname, '../..');
+config({ path: join(projectRoot, '.env') });
 
 export class ClaudeAgent {
     constructor(options = {}) {
@@ -59,11 +68,10 @@ export class ClaudeAgent {
                         this.logger.logToolError(input);
 
                         const match = input.error.match(/MCP tool '.*' on server '.*' returned an error: ### Result\n(.*)/s);
-                        const cleanError = match && match[1] ? match[1].trim() : input.error;
+                        let cleanError = match && match[1] ? match[1].trim() : input.error;
 
-                        if (this.verbose && match && match[1]) {
-                            console.error(`\n📝 Cleaned error message: ${cleanError}\n`);
-                        }
+                        // Further clean up - remove any remaining markdown artifacts
+                        cleanError = cleanError.replace(/^### Result\n/, '').trim();
 
                         toolFailureError = new Error(`Tool '${input.tool_name}' failed: ${cleanError}`);
 
@@ -96,7 +104,19 @@ export class ClaudeAgent {
             let finalResult = '';
             let currentSessionId = existingSessionId;
 
+            // Track tool calls to map tool_use_id to tool name
+            const toolCallMap = new Map();
+
             for await (const message of result) {
+                // Track tool calls from assistant messages
+                if (message.type === 'assistant' && message.message && message.message.content) {
+                    for (const block of message.message.content) {
+                        if (block.type === 'tool_use') {
+                            toolCallMap.set(block.id, block.name);
+                        }
+                    }
+                }
+
                 // Check for tool errors in user messages (is_error: true)
                 if (message.type === 'user' && message.message && message.message.content) {
                     this.logger.logUserMessage(message);
@@ -104,15 +124,39 @@ export class ClaudeAgent {
                     const toolResults = message.message.content.filter(block => block.type === 'tool_result');
                     for (const toolResult of toolResults) {
                         if (toolResult.is_error) {
-                            const errorText = typeof toolResult.content === 'string'
+                            // Extract error text
+                            let errorText = typeof toolResult.content === 'string'
                                 ? toolResult.content
                                 : Array.isArray(toolResult.content)
                                     ? toolResult.content.map(c => c.text).join('\n')
                                     : 'Unknown tool error';
 
-                            this.logger.logToolFailure('unknown', errorText); // tool name not easily available here without parsing tool_use_id map
+                            // Get tool name from toolCallMap
+                            const toolName = toolCallMap.get(toolResult.tool_use_id) || 'unknown';
 
-                            toolFailureError = new Error(`Tool execution failed: ${errorText}`);
+                            // Try to extract Playwright code context from the error message
+                            let playwrightCode = null;
+                            const codeMatch = errorText.match(/```(?:js|javascript)\n(.*?)\n```/s);
+                            if (codeMatch) {
+                                playwrightCode = codeMatch[1].trim();
+                            }
+
+                            // Clean the error text
+                            errorText = errorText.replace(/^### Result\n/, '').trim();
+                            // Remove the code block from error text if it was extracted
+                            if (playwrightCode) {
+                                errorText = errorText.replace(/### Ran Playwright code\n```(?:js|javascript)\n.*?\n```\n\n/s, '').trim();
+                            }
+
+                            // Build comprehensive error message
+                            let fullError = errorText;
+                            if (playwrightCode) {
+                                fullError = `${errorText}\n\nPlaywright code that failed:\n${playwrightCode}`;
+                            }
+
+                            this.logger.logToolFailure(toolName, fullError);
+
+                            toolFailureError = new Error(`Tool '${toolName}' failed: ${fullError}`);
                             abortController.abort();
                             throw toolFailureError;
                         }
@@ -164,15 +208,13 @@ export class ClaudeAgent {
 
         } catch (error) {
             if (error.name === 'AbortError' && toolFailureError) {
-                if (this.verbose) {
-                    console.error('❌ Query aborted due to tool failure:', toolFailureError.message);
-                }
+                // Don't log again - already logged by logToolFailure
                 throw toolFailureError;
             }
 
-            console.error('❌ Error running Claude agent:', error.message);
+            console.error('\n❌ Error running Claude agent:', error.message);
             if (this.verbose && error.stack) {
-                console.error('\nStack trace:', error.stack);
+                console.error('Stack trace:', error.stack);
             }
             throw error;
         }
@@ -183,7 +225,7 @@ export class ClaudeAgent {
             systemPrompt: {
                 type: 'preset',
                 preset: 'claude_code',
-                append: 'You are a Playwright Test Agent tasked with running playwright tests. All user requests must be performed using the Playwright MCP server tools only, do not use any other methods or assume or use your own methods. You should always report accurate test execution results. When the instruction is about to check, verify or assert you must run the verification or assertion tools and throw the exception if step failed'
+                append: `All user requests must be performed using the Playwright MCP server tools only, do not use any other methods or assume.`
             },
             mcpServers: {
                 playwright: {

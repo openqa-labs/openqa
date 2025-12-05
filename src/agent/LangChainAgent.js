@@ -8,6 +8,15 @@ import { createConnection } from '@playwright/mcp';
 import { loadMcpTools } from '@langchain/mcp-adapters';
 import { MemorySaver } from '@langchain/langgraph';
 import { Logger } from './Logger.js';
+import { config } from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// Load environment variables from project root .env file
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const projectRoot = join(__dirname, '../..');
+config({ path: join(projectRoot, '.env') });
 
 /**
  * Error handling middleware that logs tool errors and re-throws them
@@ -18,20 +27,27 @@ const handleToolErrors = createMiddleware({
         try {
             return await handler(request);
         } catch (error) {
-            console.error(`\n❌ TOOL ERROR [${request.toolCall.name}]:`, {
-                tool: request.toolCall.name,
-                content: request.toolCall.content,
-                args: request.toolCall.args,
-                error: error.message,
-                stack: error.stack
-            });
-
+            // Extract and clean error message
             const match = error.message.match(/MCP tool '.*' on server '.*' returned an error: ### Result\n(.*)/s);
-            if (match && match[1]) {
-                throw new Error(`Tool '${request.toolCall.name}' failed: ${match[1].trim()}`);
+            let cleanError = match && match[1] ? match[1].trim() : error.message;
+
+            // Further clean up - remove any remaining markdown artifacts
+            cleanError = cleanError.replace(/^### Result\n/, '').trim();
+
+            // Log cleaner error (only in debug mode for full details)
+            if (process.env.AGENT_DEBUG === 'true') {
+                console.error(`\n❌ TOOL ERROR [${request.toolCall.name}]:`, {
+                    tool: request.toolCall.name,
+                    args: request.toolCall.args,
+                    error: error.message,
+                    stack: error.stack
+                });
+            } else {
+                console.error(`\n❌ Tool '${request.toolCall.name}' failed: ${cleanError}`);
             }
 
-            throw error;
+            // Throw cleaner error
+            throw new Error(`Tool '${request.toolCall.name}' failed: ${cleanError}`);
         }
     },
 });
@@ -273,9 +289,12 @@ Note, The user may provide instructions in gherkin format for browser actions.',
             return finalResult;
 
         } catch (error) {
-            console.error('❌ Error running LangChain agent:', error.message);
+            // Extract friendly error message if it's a middleware error
+            const friendlyMessage = error.message.replace(/^Error in middleware "HandleToolErrors": /, '');
+
+            console.error('\n❌ Error running LangChain agent:', friendlyMessage);
             if (this.verbose && error.stack) {
-                console.error('\nStack trace:', error.stack);
+                console.error('Stack trace:', error.stack);
             }
             throw error;
         }
