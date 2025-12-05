@@ -1,4 +1,4 @@
-import { runClaudeAgent } from './claude-agent.js';
+import { runClaudeAgent } from './agent/index.js';
 import { runLangChainAgent } from './langchain-agent.js';
 import { config } from 'dotenv';
 
@@ -68,7 +68,7 @@ export async function runAgent(prompt, pageOrContext, options = {}) {
  * @param {string} options.agentType - Agent type to reset session for
  * @returns {Promise<string|null>} - The session ID that was reset, or null if none existed
  */
-runAgent.resetSession = async function(browserContext, options = {}) {
+runAgent.resetSession = async function (browserContext, options = {}) {
   const agentType = options.agentType || process.env.AGENT_TYPE || 'claude';
 
   switch (agentType.toLowerCase()) {
@@ -87,5 +87,5 @@ runAgent.resetSession = async function(browserContext, options = {}) {
 };
 
 // Also export individual agents for direct access
-export { runClaudeAgent } from './claude-agent.js';
+export { runClaudeAgent } from './agent/index.js';
 export { runLangChainAgent } from './langchain-agent.js';
