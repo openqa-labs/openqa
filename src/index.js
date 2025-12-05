@@ -1,5 +1,5 @@
 import { runClaudeAgent } from './agent/index.js';
-import { runLangChainAgent } from './langchain-agent.js';
+import { runLangChainAgent } from './agent/index.js';
 import { config } from 'dotenv';
 
 // Load environment variables from project's .env file (where the user runs the tests)
@@ -87,5 +87,4 @@ runAgent.resetSession = async function (browserContext, options = {}) {
 };
 
 // Also export individual agents for direct access
-export { runClaudeAgent } from './agent/index.js';
-export { runLangChainAgent } from './langchain-agent.js';
+export { runClaudeAgent, runLangChainAgent } from './agent/index.js';
