@@ -184,16 +184,60 @@ export class LangChainAgent {
 
             const { tools, checkpointer } = sessionData;
 
+            // Track tool calls for this execution
+            let toolCallCount = 0;
+            let retryCount = 0;
+            const MAX_RETRIES = 2;
+
+            // Middleware to enforce tool usage
+            const enforceToolUseMiddleware = createMiddleware({
+                name: "EnforceToolUse",
+                wrapModelCall: async (request, handler) => {
+                    // Call the model
+                    let response = await handler(request);
+
+                    // Check if tools were called in this response
+                    if (response.tool_calls && response.tool_calls.length > 0) {
+                        toolCallCount += response.tool_calls.length;
+                        return response;
+                    }
+
+                    // If no tools called yet and model tries to finish, force retry
+                    if (toolCallCount === 0 && retryCount < MAX_RETRIES) {
+                        retryCount++;
+                        if (this.verbose) {
+                            console.log(`\n⚠️  Model tried to respond without tools. Forcing retry (${retryCount}/${MAX_RETRIES})...\n`);
+                        }
+
+                        // Create a new request with explicit instruction
+                        const newMessages = [
+                            ...request.messages,
+                            {
+                                role: 'user',
+                                content: "CRITICAL: You MUST call a Playwright MCP tool (like browser_verify_text_visible) to complete this task. Do NOT respond based on cached page state. Call a tool NOW."
+                            }
+                        ];
+
+                        const newRequest = { ...request, messages: newMessages };
+                        return await handler(newRequest);
+                    }
+
+                    return response;
+                }
+            });
+
             // Create agent
             const agent = createAgent({
                 model: chatModel,
                 tools,
-                systemPrompt: 'You are a helpful browser automation assistant. \
-All user requests must be performed using the Playwright MCP server tools only. \
-Do not assume or use your own methods. \
-Note, The user may provide instructions in gherkin format for browser actions.',
+                systemPrompt: `You are a Playwright Test Agent. CRITICAL RULES:
+1. You MUST call at least one Playwright MCP tool for EVERY user instruction
+2. NEVER respond based on cached or remembered page state
+3. For verification steps (should see, verify, check, assert): ALWAYS call browser_verify_text_visible or browser_snapshot
+4. For actions (click, type, navigate): ALWAYS call the corresponding browser_* tool
+5. The test will FAIL if you respond without calling a Playwright tool`,
                 checkpointer: sessionData.checkpointer,
-                middleware: [handleToolErrors]
+                middleware: [handleToolErrors, enforceToolUseMiddleware]
             });
 
             const config = {
