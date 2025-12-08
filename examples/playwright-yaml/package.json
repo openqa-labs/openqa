@@ -4,10 +4,10 @@
   "description": "Example using OpenQA with YAML-based Playwright tests",
   "type": "module",
   "scripts": {
-    "generate": "openqa generate",
+    "generate": "npx openqa generate",
     "test": "playwright test",
-    "test:ui": "openqa generate && playwright test --ui",
-    "test:headed": "playwright test --headed",
+    "test:ui": "npx openqa generate && playwright test --ui",
+    "test:headed": "npx openqa generate && playwright test --headed",
     "test:report": "playwright show-report"
   },
   "dependencies": {

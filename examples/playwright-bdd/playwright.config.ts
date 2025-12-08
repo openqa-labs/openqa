@@ -20,6 +20,7 @@ export default defineConfig({
     trace: 'on',
     video: 'on',
     headless: true,
+    baseURL: 'https://demo.playwright.dev/todomvc/',
   },
   projects: [
     {
