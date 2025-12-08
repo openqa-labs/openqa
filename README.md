@@ -1,16 +1,19 @@
-# openqa
+# OpenQA
+
+### AI Powered Natural Language Browser Test Automation
+**No selectors. No flake. Just plain English.**
 
 [![npm version](https://badge.fury.io/js/openqa.svg)](https://www.npmjs.com/package/openqa)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-AI-powered browser automation with shared context using Claude Agent SDK and Playwright MCP.
-
 ## Features
 
-- **Zero Step Definitions**: Write BDD tests in pure natural language
-- **Shared Browser Context**: Agent and tests share the same browser instance
-- **AI-Powered**: Natural language commands for all browser interactions
-- **2-Minute Setup**: From zero to running tests with `npx openqa init`
+- **🗣️ Write Tests in Plain English** — Describe what you want, not how to find it. "Add laptop to cart" just works.
+- **📝 BDD & YAML Support** — Works with Playwright-BDD, Cucumber.js, or simple YAML files. Zero step definitions needed.
+- **🔌 Any LLM Provider** — Claude, OpenAI, or Gemini. Use the model that fits your budget and needs.
+- **⚡ 2-Minute Setup** — `npx openqa init` and you're running tests. No complex configuration.
+
+**Powered by:** [Claude Agent SDK](https://platform.claude.com/docs/en/agent-sdk/overview) • [LangChain](https://js.langchain.com/) • [Playwright MCP](https://github.com/microsoft/playwright-mcp)
 
 ## Quick Start
 
