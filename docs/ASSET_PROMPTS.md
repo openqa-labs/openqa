@@ -49,7 +49,7 @@ Avoid: Generic robot icons, magnifying glasses, bugs, gears. No gradients or 3D 
 ```
 Square profile picture for open source project "OpenQA" - AI test automation.
 
-Design: The OpenQA logo mark centered on a solid dark background (#0f172a or #18181b).
+Design: The OpenQA logo mark centered on a solid vibrant violet background (#8b5cf6).
 
 Style: Sharp, high contrast, recognizable at 48×48px thumbnail size.
 
@@ -60,7 +60,7 @@ Format: Square, no rounded corners (GitHub applies them).
 ```
 Professional company logo for "OpenQA" - open source AI test automation startup.
 
-Design: Full logo (mark + wordmark) centered on subtle gradient background (dark navy to deep purple).
+Design: Full logo (mark + wordmark) centered on clean white or very light violet background (#f5f3ff).
 
 Style: Premium tech startup aesthetic. Think Anthropic, OpenAI, or Linear's LinkedIn presence.
 
@@ -71,7 +71,7 @@ Dimensions: 300×300 square, but logo content should work in circular crop.
 ```
 Bold, recognizable profile picture for tech startup "OpenQA" - AI-powered testing.
 
-Design: Logo mark only, stark white on deep violet (#6366f1) or electric black (#0a0a0a).
+Design: Logo mark only, vibrant violet (#8b5cf6) on white background OR white on violet background.
 
 Style: High contrast, memorable at small sizes. Slightly more playful than LinkedIn.
 
@@ -99,7 +99,7 @@ Announcement graphic for open source project launch.
 
 Text overlay: "OpenQA is now open source" with tagline "No selectors. No flake. Just plain English."
 
-Design: Dark gradient background (near-black to deep purple), terminal/code aesthetic with glowing accent lines.
+Design: Clean, modern layout. White or light gray background with vibrant violet (#8b5cf6) accents and abstract geometric shapes.
 
 Style: Y Combinator launch post energy. Premium, not scrappy.
 
@@ -112,9 +112,9 @@ Feature card template for social media.
 
 Layout: Left side has feature icon (abstract geometric), right side has short text.
 
-Style: Dark mode, monospace code font for headings, clean sans-serif for body.
+Style: Modern clean aesthetic, sans-serif fonts.
 
-Elements: Subtle grid pattern background, glowing border accent.
+Elements: Subtle dot grid background, violet accent borders.
 
 Dimensions: 1200×1200 square
 ```
@@ -131,10 +131,10 @@ Headline: "AI Test Automation" in large display font
 Subhead: "No selectors. No flake. Just plain English."
 
 Design direction: 
-- Dark theme (near-black background #0a0a0a)
-- Subtle animated grid or mesh gradient in background
-- Floating code snippet showing YAML test syntax with syntax highlighting
-- Prominent "Get Started" CTA button with glow effect
+- Light theme (white/off-white background)
+- Subtle animated mesh gradient in soft violets
+- Floating code snippet showing YAML test syntax with syntax highlighting (light or dark mode code block)
+- Prominent "Get Started" CTA button in vibrant violet
 - Trust badges: "Open Source" / "MIT License" / npm install count
 
 Aesthetic: Premium developer tool. Think Linear meets Vercel meets Anthropic.
@@ -150,9 +150,9 @@ Features grid for test automation SaaS landing page.
 2. "Any LLM Provider" - Claude/OpenAI/Gemini logos abstract
 3. "Zero Config BDD" - Cucumber/Playwright icons
 
-Style: Glass morphism cards with subtle border glow, hover animations.
+Style: Clean cards with subtle shadow and violet hover glow.
 
-Background: Subtle dot pattern or noise texture.
+Background: White with very subtle noise texture.
 
 Typography: Display font for headings, mono for code snippets.
 ```
@@ -165,7 +165,7 @@ Split layout:
 - Left: YAML test file with syntax highlighting
 - Right: Browser animation showing test execution
 
-Design: Terminal aesthetic with modern polish. Dracula or Tokyo Night color scheme.
+Design: Modern IDE aesthetic.
 
 Animation: Typing effect for code, browser interactions playing in sync.
 
@@ -182,7 +182,7 @@ Design: Centered layout, generous whitespace.
 
 Elements: GitHub stars counter, npm weekly downloads, contributor avatars.
 
-Background: Subtle radial gradient from center.
+Background: Soft violet radial gradient from center.
 
 Style: Celebration feel without being cheesy. Developer-focused.
 ```
@@ -249,13 +249,13 @@ Before coding, commit to a **BOLD aesthetic direction**:
 
 1. **Typography**: Use distinctive fonts (Space Grotesk, Geist, Satoshi). NEVER use Inter alone, Arial, or system defaults.
 
-2. **Color**: Dark theme primary. Dominant backgrounds with sharp accent colors. No purple-gradient-on-white clichés.
+2. **Color**: Light theme primary. Clean white/off-white backgrounds with vibrant violet accents. No dark-mode-only designs.
 
 3. **Motion**: One well-orchestrated page load animation > scattered micro-interactions. Staggered reveals, scroll-triggered effects.
 
 4. **Layout**: Asymmetric compositions. Generous negative space. Grid-breaking hero elements.
 
-5. **Backgrounds**: Gradient meshes, noise textures, geometric patterns. NEVER plain solid colors.
+5. **Backgrounds**: Subtle mesh gradients, noise textures, geometric patterns. NEVER plain solid colors.
 
 6. **Details**: Glowing borders, subtle shadows, grain overlays. Custom cursor optional.
 
@@ -270,10 +270,11 @@ Before coding, commit to a **BOLD aesthetic direction**:
 ### Inspiration
 
 - Linear.app (motion, polish)
-- Vercel.com (dark theme, developer aesthetic)
+- Vercel.com (clean, developer aesthetic)
 - Anthropic.com (premium AI company feel)
 - Supabase.com (open source energy)
 - Raycast.com (product-focused design)
+- Val.town (minimal, social coding aesthetic)
 
 ---
 
