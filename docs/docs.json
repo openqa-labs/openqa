@@ -1,0 +1,87 @@
+{
+    "$schema": "https://mintlify.com/docs.json",
+    "theme": "maple",
+    "name": "OpenQA",
+    "description": "AI Powered Natural Language Browser Test Automation",
+    "colors": {
+        "primary": "#8b5cf6",
+        "light": "#a78bfa",
+        "dark": "#7c3aed"
+    },
+    "logo": {
+        "light": "/assets/400x114.png",
+        "dark": "/assets/400x114-NoBackground.png"
+    },
+    "favicon": "/assets/favicon.png",
+    "navigation": {
+        "groups": [
+            {
+                "group": "Getting Started",
+                "pages": [
+                    "index",
+                    "quickstart"
+                ]
+            },
+            {
+                "group": "Integrations",
+                "pages": [
+                    "integrations/playwright",
+                    "integrations/playwright-bdd",
+                    "integrations/cucumber",
+                    "integrations/yaml"
+                ]
+            },
+            {
+                "group": "API Reference",
+                "pages": [
+                    "api/run-agent",
+                    "api/bdd-exports"
+                ]
+            },
+            {
+                "group": "Configuration",
+                "pages": [
+                    "configuration/providers"
+                ]
+            },
+            {
+                "group": "Resources",
+                "pages": [
+                    "examples"
+                ]
+            }
+        ]
+    },
+    "navbar": {
+        "links": [
+            {
+                "label": "GitHub",
+                "href": "https://github.com/auto-browse/openqa"
+            },
+            {
+                "label": "npm",
+                "href": "https://www.npmjs.com/package/openqa"
+            }
+        ],
+        "primary": {
+            "type": "github",
+            "href": "https://github.com/auto-browse/openqa"
+        }
+    },
+    "footer": {
+        "socials": {
+            "github": "https://github.com/auto-browse/openqa"
+        }
+    },
+    "contextual": {
+        "options": [
+            "copy",
+            "view",
+            "chatgpt",
+            "claude",
+            "perplexity",
+            "cursor",
+            "vscode"
+        ]
+    }
+}

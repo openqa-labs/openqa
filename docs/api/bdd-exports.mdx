@@ -1,0 +1,84 @@
+---
+title: "BDD Exports"
+description: "Integration modules for BDD frameworks"
+---
+
+# BDD Exports
+
+OpenQA provides integrations for Playwright-BDD and Cucumber.js.
+
+## Playwright-BDD
+
+### Quick Import
+
+```typescript
+import 'openqa/bdd/playwright-bdd';
+```
+
+This single import:
+- Registers a catch-all step that handles any Gherkin step
+- Routes all steps to the AI agent
+
+### Named Exports
+
+```typescript
+import { 
+  test,           // Extended Playwright test
+  Given,          // BDD step helper
+  When,           // BDD step helper
+  Then,           // BDD step helper
+  Step,           // Generic step helper
+  createAIStep,   // Custom AI step factory
+  AIStep          // Pre-configured catch-all step
+} from 'openqa/bdd/playwright-bdd';
+```
+
+### createAIStep()
+
+Create a custom AI step with specific options:
+
+```typescript
+import { createAIStep } from 'openqa/bdd/playwright-bdd';
+
+createAIStep({
+  verbose: false,
+  agentType: 'langchain',
+  provider: 'openai',
+  model: 'gpt-4o',
+  pattern: /^I (.*)$/  // Custom pattern
+});
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `verbose` | `boolean` | `true` | Enable logging |
+| `agentType` | `string` | `'claude'` | Agent type |
+| `provider` | `string` | - | LLM provider |
+| `model` | `string` | - | Model name |
+| `pattern` | `RegExp` | `/^(.*)$/` | Step pattern |
+
+### AIStep
+
+Pre-configured step that matches any text:
+
+```typescript
+import { AIStep } from 'openqa/bdd/playwright-bdd';
+// AIStep is automatically registered
+```
+
+---
+
+## Cucumber.js
+
+### Quick Import
+
+```typescript
+import 'openqa/bdd/cucumber';
+```
+
+This sets up:
+- Browser lifecycle (launch/close)
+- Catch-all step definitions
+- AI agent integration
+
+Browser management is automatic—each scenario gets a fresh context.

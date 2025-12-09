@@ -1,0 +1,101 @@
+---
+title: "Playwright-BDD"
+description: "One-line integration for Gherkin feature files"
+---
+
+# Playwright-BDD Integration
+
+Replace all step definitions with AI-powered automation.
+
+## Installation
+
+```bash
+npm install openqa
+```
+
+## Setup
+
+Replace your step definitions file with a single import:
+
+```typescript
+// features/steps/steps.ts
+import 'openqa/bdd/playwright-bdd';
+
+// That's it. All Gherkin steps are now handled by AI.
+```
+
+## Write Feature Files
+
+```gherkin
+Feature: TodoMVC
+
+  Scenario: Add todo item
+    Given I navigate to "https://demo.playwright.dev/todomvc/"
+    When I add a new todo item "Buy groceries"
+    Then I should see "Buy groceries" in the todo list
+
+  Scenario: Filter todos
+    Given I navigate to "https://demo.playwright.dev/todomvc/"
+    When I add three todo items: "Task 1", "Task 2", and "Task 3"
+    And I mark the first todo as completed
+    And I click the Active filter
+    Then I should see 2 active todos
+```
+
+## Run Tests
+
+```bash
+npm test
+```
+
+## Custom Configuration
+
+Use `createAIStep()` for custom options:
+
+```typescript
+import { createAIStep } from 'openqa/bdd/playwright-bdd';
+
+createAIStep({
+  verbose: false,
+  agentType: 'langchain',
+  provider: 'openai'
+});
+```
+
+## Manual Usage
+
+For more control, use the BDD helpers directly:
+
+```typescript
+import { test, Given, When, Then } from 'openqa/bdd/playwright-bdd';
+import { runAgent } from 'openqa';
+
+export { test };
+
+// Custom step with manual agent call
+When('I do something special', async ({ context }) => {
+  await runAgent('Do the special thing', context, { verbose: true });
+});
+```
+
+## Authentication
+
+<Tabs>
+  <Tab title="Claude CLI">
+    ```bash
+    claude login
+    ```
+  </Tab>
+  <Tab title="API Key">
+    ```bash
+    export ANTHROPIC_API_KEY=your_key
+    ```
+  </Tab>
+  <Tab title="OpenAI / Google">
+    ```bash
+    AGENT_TYPE=langchain
+    DEFAULT_PROVIDER=openai
+    OPENAI_API_KEY=your_key
+    ```
+  </Tab>
+</Tabs>

@@ -1,0 +1,98 @@
+---
+title: "AI Providers"
+description: "Configure Claude, OpenAI, or Google as your AI backend"
+---
+
+# AI Provider Configuration
+
+OpenQA supports multiple LLM providers.
+
+## Anthropic (Default)
+
+Claude is the default provider with two authentication methods:
+
+<Tabs>
+  <Tab title="Claude CLI">
+    ```bash
+    claude login
+    ```
+    Uses Claude Code authentication. No API key needed.
+  </Tab>
+  <Tab title="API Key">
+    ```bash
+    export ANTHROPIC_API_KEY=sk-ant-...
+    ```
+    Or in `.env`:
+    ```
+    ANTHROPIC_API_KEY=sk-ant-...
+    ```
+  </Tab>
+</Tabs>
+
+## OpenAI
+
+Use GPT models via LangChain agent:
+
+```bash
+# .env
+AGENT_TYPE=langchain
+DEFAULT_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+```
+
+Or pass options directly:
+
+```typescript
+await runAgent("Click submit", context, {
+  agentType: "langchain",
+  provider: "openai",
+  model: "gpt-4o"  // optional
+});
+```
+
+## Google (Gemini)
+
+Use Gemini models via LangChain agent:
+
+```bash
+# .env
+AGENT_TYPE=langchain
+DEFAULT_PROVIDER=google
+GOOGLE_API_KEY=...
+```
+
+Or pass options directly:
+
+```typescript
+await runAgent("Click submit", context, {
+  agentType: "langchain",
+  provider: "google",
+  model: "gemini-1.5-pro"  // optional
+});
+```
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `AGENT_TYPE` | `'claude'` (default) or `'langchain'` |
+| `DEFAULT_PROVIDER` | `'anthropic'`, `'openai'`, or `'google'` |
+| `ANTHROPIC_API_KEY` | Anthropic API key |
+| `OPENAI_API_KEY` | OpenAI API key |
+| `GOOGLE_API_KEY` | Google AI API key |
+
+## Priority Order
+
+Configuration is resolved in this order:
+
+1. Options passed to `runAgent()`
+2. Environment variables
+3. Defaults (Claude agent with Anthropic)
+
+```typescript
+// This overrides all env vars
+await runAgent("Click", context, {
+  agentType: "langchain",
+  provider: "openai"
+});
+```
