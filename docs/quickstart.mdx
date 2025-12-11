@@ -1,0 +1,79 @@
+---
+title: "Quickstart"
+description: "Get running in 2 minutes with npx openqa init"
+---
+
+# Quickstart
+
+## New Project
+
+<Steps>
+  <Step title="Initialize">
+    ```bash
+    npx openqa init
+    ```
+    This will prompt you to select a framework and configure your AI provider.
+  </Step>
+  <Step title="Choose Framework">
+    Select from:
+    - **YAML** — Simplest format for test cases
+    - **Playwright-BDD** — Gherkin syntax with Playwright
+    - **Cucumber.js** — Standard Cucumber with AI steps
+  </Step>
+  <Step title="Configure AI Provider">
+    Choose your authentication method:
+    
+    <Tabs>
+      <Tab title="Claude CLI (Recommended)">
+        ```bash
+        claude login
+        ```
+      </Tab>
+      <Tab title="API Key">
+        ```bash
+        export ANTHROPIC_API_KEY=your_key
+        ```
+      </Tab>
+      <Tab title=".env File">
+        ```bash
+        echo "ANTHROPIC_API_KEY=your_key" > .env
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Write Your First Test">
+    ```yaml
+    name: My First Test
+    tests:
+      - name: Add todo item
+        steps:
+          - Navigate to "https://demo.playwright.dev/todomvc/"
+          - Add a new todo item "Buy groceries"
+          - Verify the todo appears in the list
+    ```
+  </Step>
+  <Step title="Run">
+    ```bash
+    npm test
+    ```
+  </Step>
+</Steps>
+
+## Existing Project?
+
+Choose your integration:
+
+<CardGroup cols={2}>
+  <Card title="Playwright" icon="plug" href="/integrations/playwright">
+    Standard Playwright tests
+  </Card>
+  <Card title="Playwright-BDD" icon="cucumber" href="/integrations/playwright-bdd">
+    Gherkin feature files
+  </Card>
+  <Card title="Cucumber.js" icon="leaf" href="/integrations/cucumber">
+    Cucumber step definitions
+  </Card>
+  <Card title="YAML" icon="file-code" href="/integrations/yaml">
+    Simple YAML test format
+  </Card>
+</CardGroup>

@@ -1,0 +1,89 @@
+---
+title: "Playwright"
+description: "Add AI-powered automation to existing Playwright tests"
+---
+
+# Playwright Integration
+
+Add OpenQA to your existing Playwright project.
+
+## Installation
+
+```bash
+npm install openqa
+```
+
+## Authentication
+
+<Tabs>
+  <Tab title="Claude CLI">
+    ```bash
+    claude login
+    ```
+  </Tab>
+  <Tab title="API Key">
+    ```bash
+    export ANTHROPIC_API_KEY=your_key
+    ```
+  </Tab>
+  <Tab title="OpenAI / Google">
+    Create a `.env` file:
+    ```bash
+    AGENT_TYPE=langchain
+    DEFAULT_PROVIDER=openai  # or 'google'
+    OPENAI_API_KEY=your_key
+    ```
+  </Tab>
+</Tabs>
+
+## Usage
+
+```typescript
+import { test, expect } from "@playwright/test";
+import { runAgent } from "openqa";
+
+test("AI fills and submits form", async ({ page, context }) => {
+  await page.goto("https://example.com/form");
+
+  // AI agent uses same browser context
+  await runAgent("Fill in the form with test data", context);
+
+  // Continue with standard assertions
+  await expect(page.locator('input[name="email"]')).toHaveValue("test@example.com");
+});
+```
+
+## How Context Sharing Works
+
+OpenQA uses `@playwright/mcp` to share the browser context between your test and the AI agent:
+
+- Shared cookies and session storage
+- Same page state and navigation history
+- True collaborative automation
+
+```typescript
+test("Multi-step flow", async ({ context }) => {
+  // Agent navigates and logs in
+  await runAgent("Go to app.example.com and log in as test@example.com", context);
+  
+  // Agent continues in same session
+  await runAgent("Navigate to settings and enable dark mode", context);
+  
+  // Your test can verify the result
+  const page = context.pages()[0];
+  await expect(page.locator("body")).toHaveClass(/dark/);
+});
+```
+
+## Options
+
+Pass configuration as the third argument:
+
+```typescript
+await runAgent("Click submit", context, {
+  verbose: false,        // Disable logging
+  agentType: "langchain" // Use LangChain instead of Claude
+});
+```
+
+See [API Reference](/api/run-agent) for all options.

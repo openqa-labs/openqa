@@ -1,0 +1,11 @@
+/* Sidebar logo - target the exact element */
+#sidebar-content>div:first-child a img,
+#sidebar-content a img.nav-logo,
+img.nav-logo {
+    height: 43px !important;
+    width: 168px !important;
+    min-width: 168px !important;
+    max-width: none !important;
+    object-fit: contain !important;
+    object-position: left center !important;
+}

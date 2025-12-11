@@ -1,0 +1,103 @@
+---
+title: "runAgent()"
+description: "Core function to execute AI browser automation"
+---
+
+# runAgent()
+
+Execute an AI agent with a natural language instruction.
+
+## Signature
+
+```typescript
+runAgent(prompt: string, context: BrowserContext, options?: RunAgentOptions): Promise<string>
+```
+
+## Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `prompt` | `string` | Yes | Natural language instruction |
+| `context` | `BrowserContext` | Yes | Playwright browser context |
+| `options` | `object` | No | Configuration options |
+
+## Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `verbose` | `boolean` | `true` | Enable console logging |
+| `agentType` | `string` | `'claude'` | Agent backend: `'claude'` or `'langchain'` |
+| `provider` | `string` | `'anthropic'` | LLM provider: `'anthropic'`, `'openai'`, `'google'` |
+| `model` | `string` | - | Override default model name |
+| `recursionLimit` | `number` | `100` | Max agent recursion depth |
+| `returnUsage` | `boolean` | `false` | Return usage statistics |
+| `modelConfig` | `object` | - | Additional model configuration |
+
+## Returns
+
+- **Default**: `Promise<string>` — Final agent response
+- **With `returnUsage: true`**: `Promise<{ result: string, usage: object }>` — Response with token usage
+
+## Examples
+
+### Basic Usage
+
+```typescript
+import { runAgent } from "openqa";
+
+test("example", async ({ context }) => {
+  const result = await runAgent("Click the login button", context);
+});
+```
+
+### With Options
+
+```typescript
+await runAgent("Fill the form", context, {
+  verbose: false,
+  agentType: "langchain",
+  provider: "openai",
+  model: "gpt-4o"
+});
+```
+
+### Using Different Agents
+
+<Tabs>
+  <Tab title="Claude (Default)">
+    ```typescript
+    await runAgent("Click submit", context);
+    // Uses Claude Agent SDK
+    ```
+  </Tab>
+  <Tab title="LangChain">
+    ```typescript
+    await runAgent("Click submit", context, {
+      agentType: "langchain",
+      provider: "openai" // or 'anthropic', 'google'
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Session Management
+
+Reset agent session for a browser context:
+
+```typescript
+await runAgent.resetSession(context);
+```
+
+## Direct Agent Access
+
+Import individual agents directly:
+
+```typescript
+import { runClaudeAgent, runLangChainAgent } from "openqa";
+
+// Use Claude Agent SDK directly
+await runClaudeAgent(prompt, context, options);
+
+// Use LangChain agent directly
+await runLangChainAgent(prompt, context, options);
+```
