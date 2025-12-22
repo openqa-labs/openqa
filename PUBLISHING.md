@@ -15,34 +15,7 @@
 
 ## Testing Before Publishing
 
-### Option 1: Test with npm link (Recommended)
-
-```bash
-# In openqa repo root
-npm link
-
-# In a test project directory
-mkdir ../test-openqa && cd ../test-openqa
-npm link openqa
-npm install playwright-bdd @playwright/test
-
-# Test the CLI
-npx openqa init playwright-bdd
-
-# Test in a Node script
-node -e "import('openqa').then(m => console.log(m))"
-```
-
-Clean up after testing:
-```bash
-# In test project
-npm unlink openqa
-
-# In openqa repo
-npm unlink
-```
-
-### Option 2: Test with npm pack
+### Option 1: Test with npm pack
 
 ```bash
 # In openqa repo
@@ -55,7 +28,7 @@ npm install playwright-bdd @playwright/test
 npx openqa init playwright-bdd
 ```
 
-### Option 3: Publish Beta Version
+### Option 2: Publish Beta Version
 
 ```bash
 # In openqa repo

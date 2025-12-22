@@ -1,7 +1,7 @@
 {
   "name": "openqa",
-  "version": "0.0.4",
-  "description": "AI-powered Browser automation using playwright mcp",
+  "version": "0.0.5",
+  "description": "AI-powered Browser automation in Natural Language using playwright mcp",
   "type": "module",
   "bin": {
     "openqa": "./src/cli/bin.js"
