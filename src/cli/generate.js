@@ -5,7 +5,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSync } from 'fs';
-import { join, dirname, basename, extname, relative } from 'path';
+import { join, dirname, basename, extname, relative, resolve } from 'path';
 import chalk from 'chalk';
 import yaml from 'js-yaml';
 import { generateTest } from '../yaml/generator.js';
@@ -137,7 +137,8 @@ async function generateSingleFile(yamlFile, options = {}) {
   }
 
   // Generate code
-  const jsCode = generateTest(yamlContent, basename(yamlFile));
+  const absoluteYamlPath = resolve(yamlFile);
+  const jsCode = generateTest(yamlContent, basename(yamlFile), absoluteYamlPath);
 
   // Determine output path: Output to .tests-gen/ directory
   const outputFile = getOutputPath(yamlFile);

@@ -1,0 +1,19 @@
+name: OnKernel Cloud Browser Tests
+fixtureFile: ../fixtures/steel.js
+
+tests:
+  - name: Test TodoMVC with cloud browser
+    tags: [cloud, onkernel]
+    steps:
+      - Navigate to https://demo.playwright.dev/todomvc/
+      - Add a new todo item "Cloud Testing with OnKernel"
+      - Verify that "Cloud Testing with OnKernel" appears in the todo list
+      - Mark the todo as completed
+      - Verify the todo is marked as completed
+
+  - name: Test form with cloud browser
+    tags: [cloud, onkernel]
+    steps:
+      - Navigate to https://demo.playwright.dev/todomvc/#/
+      - 'Add three todo items: First task, Second task, Third task'
+      - Verify all three items appear in the list

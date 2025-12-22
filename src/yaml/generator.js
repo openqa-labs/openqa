@@ -13,14 +13,16 @@
 
 import yaml from 'js-yaml';
 import { readFileSync } from 'fs';
+import { resolve, relative, dirname, join } from 'path';
 
 /**
  * Generate Playwright test code from YAML definition
  * @param {string} yamlContent - YAML file content
  * @param {string} sourceFile - Source YAML filename (for comments)
+ * @param {string} yamlFilePath - Absolute path to YAML file (for fixture resolution)
  * @returns {string} - Generated JavaScript test code
  */
-export function generateTest(yamlContent, sourceFile = 'test.yaml') {
+export function generateTest(yamlContent, sourceFile = 'test.yaml', yamlFilePath = null) {
   const spec = yaml.load(yamlContent);
 
   let code = '';
@@ -31,7 +33,14 @@ export function generateTest(yamlContent, sourceFile = 'test.yaml') {
   code += `// Edit the YAML file instead and run: npx openqa generate\n\n`;
 
   // Imports
-  code += `import { test } from '@playwright/test';\n`;
+  if (spec.fixtureFile && yamlFilePath) {
+    // Custom fixture file: compute relative path from output to fixture
+    const fixtureImportPath = resolveFixtureImportPath(yamlFilePath, spec.fixtureFile);
+    code += `import { test } from '${fixtureImportPath}';\n`;
+  } else {
+    // Default: use @playwright/test
+    code += `import { test } from '@playwright/test';\n`;
+  }
   code += `import { runAgent } from 'openqa';\n\n`;
 
   // Start describe block
@@ -215,6 +224,58 @@ function sanitizeName(name) {
 }
 
 /**
+ * Resolve fixture file import path for generated test
+ * @param {string} yamlFilePath - Absolute path to YAML file
+ * @param {string} fixtureFile - Relative fixture path from YAML
+ * @returns {string} - Relative import path from generated .js file to fixture
+ */
+function resolveFixtureImportPath(yamlFilePath, fixtureFile) {
+  // Step 1: Resolve fixture file relative to YAML file directory
+  const yamlDir = dirname(yamlFilePath);
+  const absoluteFixturePath = resolve(yamlDir, fixtureFile);
+
+  // Step 2: Determine output file path (.tests-gen/...)
+  const outputPath = getOutputPath(yamlFilePath);
+  const outputDir = dirname(outputPath);
+
+  // Step 3: Compute relative path from output to fixture
+  let relativePath = relative(outputDir, absoluteFixturePath);
+
+  // Step 4: Ensure Unix-style separators and ./ prefix
+  relativePath = relativePath.replace(/\\/g, '/');
+  if (!relativePath.startsWith('.')) {
+    relativePath = './' + relativePath;
+  }
+
+  return relativePath;
+}
+
+/**
+ * Get output path for generated test (needed by resolveFixtureImportPath)
+ * Note: This duplicates logic from generate.js - consider refactoring
+ * @param {string} yamlFilePath - Absolute path to YAML file
+ * @returns {string} - Path to output JS file in .tests-gen/
+ */
+function getOutputPath(yamlFilePath) {
+  // Convert absolute path to relative path from cwd
+  let relativePath = yamlFilePath;
+  if (resolve(yamlFilePath).startsWith(process.cwd())) {
+    relativePath = relative(process.cwd(), yamlFilePath);
+  }
+
+  // Replace extension
+  let jsFile = relativePath.replace(/\.spec\.ya?ml$/, '.spec.js');
+
+  // If starts with tests/, strip that prefix
+  if (jsFile.startsWith('tests/')) {
+    jsFile = jsFile.substring(6);  // Remove 'tests/'
+  }
+
+  // Prepend .tests-gen/
+  return join('.tests-gen', jsFile);
+}
+
+/**
  * Generate test file from YAML file
  * @param {string} yamlFilePath - Path to YAML file
  * @returns {string} - Generated JavaScript code
@@ -222,5 +283,6 @@ function sanitizeName(name) {
 export function generateTestFromFile(yamlFilePath) {
   const yamlContent = readFileSync(yamlFilePath, 'utf8');
   const sourceFile = yamlFilePath.split('/').pop();
-  return generateTest(yamlContent, sourceFile);
+  const absoluteYamlPath = resolve(yamlFilePath);
+  return generateTest(yamlContent, sourceFile, absoluteYamlPath);
 }

@@ -1,7 +1,7 @@
 {
-  "name": "playwright-bdd-onkernel-example",
+  "name": "playwright-bdd-steel-example",
   "version": "1.0.0",
-  "description": "Example using openqa with Playwright BDD tests on OnKernel cloud browsers",
+  "description": "Example using openqa with Playwright BDD tests on Steel.dev Docker browser",
   "type": "module",
   "scripts": {
     "bddgen": "bddgen",
@@ -10,7 +10,6 @@
     "test:report": "playwright show-report"
   },
   "dependencies": {
-    "@onkernel/sdk": "^0.2.0",
     "openqa": "file:../.."
   },
   "devDependencies": {

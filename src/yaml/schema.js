@@ -35,6 +35,22 @@ export function validateSpec(spec) {
     validateFixtures(spec.fixtures, errors);
   }
 
+  // Validate fixtureFile if present
+  if (spec.fixtureFile) {
+    if (typeof spec.fixtureFile !== 'string') {
+      errors.push('"fixtureFile" must be a string');
+    } else {
+      // Must be relative path starting with ./ or ../
+      if (!spec.fixtureFile.match(/^\.{1,2}\//)) {
+        errors.push('"fixtureFile" must be a relative path starting with ./ or ../');
+      }
+      // Must have .js or .ts extension
+      if (!spec.fixtureFile.match(/\.(js|ts)$/)) {
+        errors.push('"fixtureFile" must end with .js or .ts extension');
+      }
+    }
+  }
+
   // Validate each test
   if (spec.tests && Array.isArray(spec.tests)) {
     spec.tests.forEach((test, index) => {
@@ -173,13 +189,15 @@ export function getSchemaDoc() {
 YAML Test Schema:
 
 name: string              # Test suite name (required)
+fixtureFile?: string      # Custom fixture file path (optional, relative to YAML file)
+                          # Example: './fixtures/browser.js' or '../shared/fixtures.ts'
 url?: string              # Base URL for documentation (optional, configure in playwright.config.ts)
 
 hooks?:                   # Test hooks (optional)
   beforeEach?: string[]   # Steps before each test
   afterEach?: string[]    # Steps after each test
 
-fixtures?:                # Custom fixtures (optional)
+fixtures?:                # Custom fixtures (optional) - DEPRECATED: Use fixtureFile instead
   <fixtureName>:
     setup: string[]       # Setup steps (required)
     teardown?: string[]   # Teardown steps (optional)
