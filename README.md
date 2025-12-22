@@ -42,6 +42,33 @@ tests:
       - Verify "Order confirmed" appears on the page
 ```
 
+**YAML with Custom Fixtures** (Cloud browsers, custom data, etc.):
+
+```yaml
+name: Cloud Browser Tests
+fixtureFile: ./fixtures/browser.js  # Custom Playwright fixtures
+
+tests:
+  - name: Test with cloud browser
+    steps:
+      - Navigate to "https://shop.example.com"
+      - Add laptop to cart
+```
+
+```javascript
+// fixtures/browser.js - Custom browser fixture
+import { test as base } from '@playwright/test';
+import { chromium } from '@playwright/test';
+
+export const test = base.extend({
+  browser: [async ({}, use) => {
+    const browser = await chromium.connectOverCDP('ws://your-cloud-browser');
+    await use(browser);
+    await browser.close();
+  }, { scope: 'worker' }],
+});
+```
+
 ---
 
 **Integrations with Existing Projects:**
@@ -237,11 +264,12 @@ import 'openqa/bdd/cucumber';
 
 ## Examples
 
-- [`examples/playwright-yaml/`](examples/playwright-yaml/) - YAML tests with natural language
+- [`examples/playwright-yaml/`](examples/playwright-yaml/) - YAML tests with natural language + custom fixtures
 - [`examples/playwright/`](examples/playwright/) - Standard Playwright tests
 - [`examples/playwright-bdd-simple/`](examples/playwright-bdd-simple/) - 1-line BDD integration
 - [`examples/playwright-bdd/`](examples/playwright-bdd/) - Manual BDD setup
 - [`examples/playwright-bdd-onkernel/`](examples/playwright-bdd-onkernel/) - BDD with OnKernel cloud browsers
+- [`examples/playwright-bdd-steel/`](examples/playwright-bdd-steel/) - BDD with Steel Docker browsers
 
 ## Requirements
 
