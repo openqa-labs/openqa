@@ -1,6 +1,6 @@
 {
   "name": "playwright-bdd-example",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Example using openqa with Playwright BDD tests",
   "type": "module",
   "scripts": {
