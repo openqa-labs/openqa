@@ -1,5 +1,6 @@
 import { runClaudeAgent } from './agent/index.js';
 import { runLangChainAgent } from './agent/index.js';
+import { runGoogleADKAgent } from './agent/index.js';
 import { config } from 'dotenv';
 
 // Load environment variables from project's .env file (where the user runs the tests)
@@ -51,10 +52,13 @@ export async function runAgent(prompt, pageOrContext, options = {}) {
     case 'langchain':
       return runLangChainAgent(prompt, pageOrContext, options);
 
+    case 'google-adk':
+      return runGoogleADKAgent(prompt, pageOrContext, options);
+
     default:
       throw new Error(
         `Unsupported agent type: ${agentType}. ` +
-        `Supported types are: 'claude', 'langchain'. ` +
+        `Supported types are: 'claude', 'langchain', 'google-adk'. ` +
         `Set via options.agentType or AGENT_TYPE environment variable.`
       );
   }
@@ -78,13 +82,16 @@ runAgent.resetSession = async function (browserContext, options = {}) {
     case 'langchain':
       return runLangChainAgent.resetSession(browserContext);
 
+    case 'google-adk':
+      return runGoogleADKAgent.resetSession(browserContext);
+
     default:
       throw new Error(
         `Unsupported agent type: ${agentType}. ` +
-        `Supported types are: 'claude', 'langchain'.`
+        `Supported types are: 'claude', 'langchain', 'google-adk'.`
       );
   }
 };
 
 // Also export individual agents for direct access
-export { runClaudeAgent, runLangChainAgent } from './agent/index.js';
+export { runClaudeAgent, runLangChainAgent, runGoogleADKAgent } from './agent/index.js';

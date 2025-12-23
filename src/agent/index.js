@@ -3,6 +3,7 @@ export { ClaudeAgent } from './ClaudeAgent.js';
 export { sessionManager } from './SessionManager.js';
 export { Logger } from './Logger.js';
 export { LangChainAgent, langChainSessionManager } from './LangChainAgent.js';
+export { runGoogleADKAgent } from './GoogleADKAgent.js';
 
 import { ClaudeAgent } from './ClaudeAgent.js';
 import { sessionManager } from './SessionManager.js';

@@ -79,10 +79,31 @@ npm run bddgen && npm test
    - Uses `createAgent()` with middleware for error handling
    - MemorySaver for conversation history
    - Compatible with existing MCP tools via `@langchain/mcp-adapters`
+    
+3. **Google ADK Agent** (`src/agent/GoogleADKAgent.js`)
+   - Uses `@google/adk` (Agent Development Kit)
+   - Supports Gemini models
+   - Uses `LlmAgent` with `InMemorySessionService`
+   - Wraps Playwright MCP tools for ADK compatibility
+
+**Configuration & Usage**:
+
+1. **Environment Variables**:
+   - `AGENT_TYPE`: Set to `google-adk` to use Google ADK agent globally.
+   - `GOOGLE_GENAI_API_KEY` (or `GOOGLE_API_KEY`): Required for Gemini models.
+
+2. **Running Examples**:
+   To run existing examples with Google ADK:
+   ```bash
+   export AGENT_TYPE=google-adk
+   export GOOGLE_GENAI_API_KEY=your_key
+   npx playwright test examples/todomvc/todomvc.spec.js
+   ```
 
 **Unified Interface** (`src/index.js`):
 - `runAgent(prompt, pageOrContext, options)` - Routes to appropriate agent
 - Agent selection: `options.agentType` > `AGENT_TYPE` env var > default ('claude')
+- Supported types: `claude`, `langchain`, `google-adk`
 - Accepts both Page and BrowserContext objects
 - Returns string result or usage statistics (if `returnUsage: true`)
 
