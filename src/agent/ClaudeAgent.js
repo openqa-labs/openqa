@@ -53,10 +53,17 @@ export class ClaudeAgent {
                 this.logger.log(`♻️  SESSION: Resuming session: ${existingSessionId}\n`);
             }
 
-            // Create MCP connection
+            // Create MCP connection with a custom context getter
+            // The context getter wraps the browser context with a no-op close function
+            // This prevents the MCP server from disposing our externally-managed browser context
+            const contextWithManagedLifecycle = Object.create(browserContext);
+            contextWithManagedLifecycle.close = async () => {
+                // No-op: browser context is managed externally by Playwright test fixtures
+            };
+
             const mcpServer = await createConnection(
                 { capabilities: ['core', 'testing'] },
-                () => Promise.resolve(browserContext)
+                () => Promise.resolve(contextWithManagedLifecycle)
             );
 
             const queryOptions = this._buildQueryOptions(mcpServer, existingSessionId, abortController);

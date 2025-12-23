@@ -90,8 +90,10 @@ npm run bddgen && npm test
 
 **ClaudeAgent Sessions** (`src/agent/SessionManager.js`):
 - Maps BrowserContext -> sessionId (WeakMap)
-- Automatic session reuse for same context
-- `resetSession(browserContext)` to start fresh
+- Maps BrowserContext -> MCP connection (WeakMap)
+- MCP connection reused across multiple `runAgent()` calls
+- Automatic cleanup via FinalizationRegistry when context is GC'd
+- `resetSession(browserContext)` to start fresh (closes MCP connection)
 
 **LangChain Sessions** (`src/agent/LangChainAgent.js`):
 - Maps BrowserContext -> sessionData (WeakMap with cleanup)
