@@ -74,8 +74,8 @@ import { runAgent } from 'openqa';
 import { aistep } from './fixtures';
 
 // Generic AI-powered step - handles ANY step with natural language
-aistep(/^(.*)$/, async ({ page, context }, action: string) => {
-  await runAgent(action, context, { verbose: false });
+aistep(/^(.*)$/, async ({ openqaSession }, action: string) => {
+  await runAgent(action, { session: openqaSession, verbose: false });
 });
 ```
 

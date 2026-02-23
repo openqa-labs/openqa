@@ -20,14 +20,18 @@
  */
 
 import { test as base, createBdd } from 'playwright-bdd';
-import { runAgent } from '../index.js';
+import { runAgent, createSession, closeSession } from '../index.js';
 
 /**
- * Extended Playwright test with BDD support
+ * Extended Playwright test with BDD support and session management
  * Users can extend this further if needed
  */
 export const test = base.extend({
-  // Custom fixtures can be added here if needed in the future
+  openqaSession: [async ({}, use) => {
+    const session = createSession();
+    await use(session);
+    await closeSession(session);
+  }, { scope: 'test' }]
 });
 
 /**
@@ -58,11 +62,11 @@ export function createAIStep(options = {}) {
     modelConfig: options.modelConfig,
   };
 
-  Step(pattern, async ({ context }, action) => {
+  Step(pattern, async ({ openqaSession }, action) => {
     if (options.verbose !== false) {
       console.log(`Executing AI step: ${action}`);
     }
-    await runAgent(action, context, agentOptions);
+    await runAgent(action, { session: openqaSession, ...agentOptions });
   });
 }
 
@@ -70,9 +74,9 @@ export function createAIStep(options = {}) {
  * Pre-configured AI step that catches all Gherkin steps
  * Automatically registered when this module is imported
  */
-export const AIStep = Step(/^(.*)$/, async ({ context }, action) => {
+export const AIStep = Step(/^(.*)$/, async ({ openqaSession }, action) => {
   console.log(`Executing AI step: ${action}`);
-  await runAgent(action, context, { verbose: true });
+  await runAgent(action, { session: openqaSession, verbose: true });
 });
 
 // Auto-register the AI step when module is imported

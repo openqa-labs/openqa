@@ -8,7 +8,7 @@
  * - Keep it simple: Just string templates
  * - No complex logic: Focus on AI agent, not framework
  * - Transparent: Generated code should be readable
- * - Session managed: Same context = same session across steps
+ * - Session managed: playwright-cli session per test, shared across steps
  */
 
 import yaml from 'js-yaml';
@@ -41,10 +41,15 @@ export function generateTest(yamlContent, sourceFile = 'test.yaml', yamlFilePath
     // Default: use @playwright/test
     code += `import { test } from '@playwright/test';\n`;
   }
-  code += `import { runAgent } from 'openqa';\n\n`;
+  code += `import { runAgent, createSession, closeSession } from 'openqa';\n\n`;
 
   // Start describe block
   code += `test.describe('${spec.name}', () => {\n`;
+
+  // Session management: one session per test
+  code += `  let _openqaSession;\n`;
+  code += `  test.beforeEach(async () => { _openqaSession = createSession(); });\n`;
+  code += `  test.afterEach(async () => { await closeSession(_openqaSession); });\n\n`;
 
   // Add hooks if present
   if (spec.hooks) {
@@ -79,11 +84,11 @@ export function generateTest(yamlContent, sourceFile = 'test.yaml', yamlFilePath
  * @returns {string} - Generated hook code
  */
 function generateHook(hookType, steps) {
-  let code = `  test.${hookType}(async ({ page, context }) => {\n`;
+  let code = `  test.${hookType}(async () => {\n`;
 
   for (const step of steps) {
     code += `    await test.step('${escapeString(step)}', async () => {\n`;
-    code += `      await runAgent('${escapeString(step)}', page, { verbose: true });\n`;
+    code += `      await runAgent('${escapeString(step)}', { session: _openqaSession, verbose: true });\n`;
     code += `    });\n`;
   }
 
@@ -99,18 +104,14 @@ function generateHook(hookType, steps) {
 function generateFixtures(fixtures) {
   let code = '';
 
-  // Note: For now, fixtures are just setup steps in beforeEach
-  // Full fixture implementation would require test.extend()
-  // Keeping it simple for MVP
-
   code += `  // Fixtures\n`;
   for (const [name, definition] of Object.entries(fixtures)) {
     code += `  // Fixture: ${name}\n`;
     if (definition.setup) {
-      code += `  test.beforeEach(async ({ page, context }) => {\n`;
+      code += `  test.beforeEach(async () => {\n`;
       for (const step of definition.setup) {
         code += `    await test.step('[Fixture ${name}] ${escapeString(step)}', async () => {\n`;
-        code += `      await runAgent('${escapeString(step)}', page, { verbose: true });\n`;
+        code += `      await runAgent('${escapeString(step)}', { session: _openqaSession, verbose: true });\n`;
         code += `    });\n`;
       }
       code += `  });\n\n`;
@@ -130,7 +131,7 @@ function generateTestCase(testDef) {
   const tags = testDef.tags ? ' ' + testDef.tags.map(t => `@${t}`).join(' ') : '';
   const testName = `${testDef.name}${tags}`;
 
-  let code = `  test('${escapeString(testName)}', async ({ page, context }) => {\n`;
+  let code = `  test('${escapeString(testName)}', async () => {\n`;
 
   // Add annotations
   if (testDef.slow) {
@@ -151,7 +152,7 @@ function generateTestCase(testDef) {
   // Generate steps
   for (const step of testDef.steps) {
     code += `    await test.step('${escapeString(step)}', async () => {\n`;
-    code += `      await runAgent('${escapeString(step)}', page, { verbose: true });\n`;
+    code += `      await runAgent('${escapeString(step)}', { session: _openqaSession, verbose: true });\n`;
     code += `    });\n`;
   }
 
@@ -177,7 +178,7 @@ function generateDataDrivenTest(testDef) {
   const testNameTemplate = testDef.name.replace(/\{\{(\w+)\}\}/g, '${data.$1}');
   const tags = testDef.tags ? ' ' + testDef.tags.map(t => `@${t}`).join(' ') : '';
 
-  code += `    test(\`${testNameTemplate}${tags}\`, async ({ page, context }) => {\n`;
+  code += `    test(\`${testNameTemplate}${tags}\`, async () => {\n`;
 
   // Add annotations
   if (testDef.slow) {
@@ -188,7 +189,7 @@ function generateDataDrivenTest(testDef) {
   for (const step of testDef.steps) {
     const interpolatedStep = step.replace(/\{\{(\w+)\}\}/g, '${data.$1}');
     code += `      await test.step(\`${interpolatedStep}\`, async () => {\n`;
-    code += `        await runAgent(\`${interpolatedStep}\`, page, { verbose: true });\n`;
+    code += `        await runAgent(\`${interpolatedStep}\`, { session: _openqaSession, verbose: true });\n`;
     code += `      });\n`;
   }
 

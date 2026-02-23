@@ -2,15 +2,17 @@ import { createAgent, createMiddleware } from 'langchain';
 import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { createConnection } from '@playwright/mcp';
-import { loadMcpTools } from '@langchain/mcp-adapters';
+import { tool } from '@langchain/core/tools';
+import { z } from 'zod';
 import { MemorySaver } from '@langchain/langgraph';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { Logger } from './Logger.js';
 import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+
+const execAsync = promisify(exec);
 
 // Load environment variables from project root .env file
 const __filename = fileURLToPath(import.meta.url);
@@ -27,14 +29,8 @@ const handleToolErrors = createMiddleware({
         try {
             return await handler(request);
         } catch (error) {
-            // Extract and clean error message
-            const match = error.message.match(/MCP tool '.*' on server '.*' returned an error: ### Result\n(.*)/s);
-            let cleanError = match && match[1] ? match[1].trim() : error.message;
+            const cleanError = error.message;
 
-            // Further clean up - remove any remaining markdown artifacts
-            cleanError = cleanError.replace(/^### Result\n/, '').trim();
-
-            // Log cleaner error (only in debug mode for full details)
             if (process.env.AGENT_DEBUG === 'true') {
                 console.error(`\n❌ TOOL ERROR [${request.toolCall.name}]:`, {
                     tool: request.toolCall.name,
@@ -46,7 +42,6 @@ const handleToolErrors = createMiddleware({
                 console.error(`\n❌ Tool '${request.toolCall.name}' failed: ${cleanError}`);
             }
 
-            // Throw cleaner error
             throw new Error(`Tool '${request.toolCall.name}' failed: ${cleanError}`);
         }
     },
@@ -57,43 +52,57 @@ const handleToolErrors = createMiddleware({
  */
 class LangChainSessionManager {
     constructor() {
-        this.contextSessionMap = new WeakMap();
-        this.cleanupRegistry = new FinalizationRegistry((cleanup) => {
-            if (cleanup) {
-                cleanup().catch(() => { });
-            }
-        });
+        this.sessionMap = new Map();
     }
 
-    getSession(browserContext) {
-        return this.contextSessionMap.get(browserContext);
+    getSession(sessionName) {
+        return this.sessionMap.get(sessionName);
     }
 
-    setSession(browserContext, sessionData) {
-        this.contextSessionMap.set(browserContext, sessionData);
-        if (sessionData.cleanup) {
-            this.cleanupRegistry.register(browserContext, sessionData.cleanup);
-        }
+    setSession(sessionName, sessionData) {
+        this.sessionMap.set(sessionName, sessionData);
     }
 
-    async resetSession(browserContext) {
-        const sessionData = this.contextSessionMap.get(browserContext);
-        if (sessionData) {
-            if (sessionData.cleanup) {
-                try {
-                    await sessionData.cleanup();
-                } catch (error) {
-                    // Ignore cleanup errors
-                }
-            }
-            this.contextSessionMap.delete(browserContext);
-            return sessionData.sessionId;
-        }
-        return null;
+    async resetSession(sessionName) {
+        const sessionData = this.sessionMap.get(sessionName);
+        this.sessionMap.delete(sessionName);
+        return sessionData?.sessionId || null;
     }
 }
 
 export const langChainSessionManager = new LangChainSessionManager();
+
+/**
+ * Create playwright-cli tools for a given session
+ */
+function createPlaywrightCLITools(sessionName) {
+    const sessionFlag = sessionName ? ` -s=${sessionName}` : '';
+
+    return [
+        tool(
+            async ({ command }) => {
+                try {
+                    const { stdout, stderr } = await execAsync(command, { timeout: 30000 });
+                    return stdout || stderr || 'Command executed successfully';
+                } catch (error) {
+                    return `Error: ${error.stderr || error.message}`;
+                }
+            },
+            {
+                name: 'playwright_cli',
+                description: `Execute playwright-cli commands to control the browser. Session: ${sessionName || 'default'}. ` +
+                    `Commands: playwright-cli goto${sessionFlag} <url>, ` +
+                    `playwright-cli click${sessionFlag} <element>, ` +
+                    `playwright-cli type${sessionFlag} <element> <text>, ` +
+                    `playwright-cli snapshot${sessionFlag}, ` +
+                    `playwright-cli screenshot${sessionFlag}`,
+                schema: z.object({
+                    command: z.string().describe('The playwright-cli command to execute')
+                })
+            }
+        )
+    ];
+}
 
 /**
  * LangChain Agent Class
@@ -123,29 +132,23 @@ export class LangChainAgent {
         this.recursionLimit = recursionLimit;
     }
 
-    async run(prompt, pageOrContext) {
+    async run(prompt, options = {}) {
         // Track usage
         let totalInputTokens = 0;
         let totalOutputTokens = 0;
         let stepCount = 0;
 
-        // Resolve context
-        let browserContext;
-        let inputPage = null;
-        if (pageOrContext.context && typeof pageOrContext.context === 'function') {
-            inputPage = pageOrContext;
-            browserContext = pageOrContext.context();
-        } else {
-            browserContext = pageOrContext;
-        }
+        const sessionName = options.session || this.options.session;
 
         if (this.verbose) {
-            this.logger.log(`🤖 Running LangChain agent (${this.provider}) with shared context: "${prompt}"\n`);
-            this.logger.logContext(browserContext, inputPage);
+            this.logger.log(`🤖 Running LangChain agent (${this.provider}): "${prompt}"\n`);
+            if (sessionName) {
+                this.logger.log(`🔑 Session: ${sessionName}\n`);
+            }
         }
 
         try {
-            let sessionData = langChainSessionManager.getSession(browserContext);
+            let sessionData = sessionName ? langChainSessionManager.getSession(sessionName) : null;
             const existingSessionId = sessionData?.sessionId;
 
             if (existingSessionId && this.verbose) {
@@ -159,26 +162,27 @@ export class LangChainAgent {
                 this.logger.log(`📡 Initializing ${this.provider} model: ${chatModel.model || chatModel.modelName}\n`);
             }
 
-            // Create or reuse MCP tools and session data
+            // Create or reuse session data
             if (!sessionData) {
-                const { tools, cleanup } = await this._createPlaywrightTools(browserContext);
+                const tools = createPlaywrightCLITools(sessionName);
 
                 sessionData = {
                     sessionId: `session_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
                     checkpointer: new MemorySaver(),
-                    tools,
-                    cleanup
+                    tools
                 };
 
-                langChainSessionManager.setSession(browserContext, sessionData);
+                if (sessionName) {
+                    langChainSessionManager.setSession(sessionName, sessionData);
+                }
 
                 if (this.verbose) {
                     this.logger.log(`🔑 SESSION: New session started: ${sessionData.sessionId}\n`);
-                    this.logger.log(`✅ Loaded ${tools.length} Playwright MCP tools\n`);
+                    this.logger.log(`✅ Loaded ${tools.length} playwright-cli tool(s)\n`);
                 }
             } else {
                 if (this.verbose) {
-                    this.logger.log(`♻️  MCP: Reusing ${sessionData.tools.length} Playwright MCP tools\n`);
+                    this.logger.log(`♻️  Reusing playwright-cli tools for session: ${sessionName}\n`);
                 }
             }
 
@@ -193,28 +197,25 @@ export class LangChainAgent {
             const enforceToolUseMiddleware = createMiddleware({
                 name: "EnforceToolUse",
                 wrapModelCall: async (request, handler) => {
-                    // Call the model
                     let response = await handler(request);
 
-                    // Check if tools were called in this response
                     if (response.tool_calls && response.tool_calls.length > 0) {
                         toolCallCount += response.tool_calls.length;
                         return response;
                     }
 
-                    // If no tools called yet and model tries to finish, force retry
                     if (toolCallCount === 0 && retryCount < MAX_RETRIES) {
                         retryCount++;
                         if (this.verbose) {
                             console.log(`\n⚠️  Model tried to respond without tools. Forcing retry (${retryCount}/${MAX_RETRIES})...\n`);
                         }
 
-                        // Create a new request with explicit instruction
+                        const sessionFlag = sessionName ? ` -s=${sessionName}` : '';
                         const newMessages = [
                             ...request.messages,
                             {
                                 role: 'user',
-                                content: "CRITICAL: You MUST call a Playwright MCP tool (like browser_verify_text_visible) to complete this task. Do NOT respond based on cached page state. Call a tool NOW."
+                                content: `CRITICAL: You MUST call playwright-cli commands to complete this task. Do NOT respond based on cached page state. Call a tool NOW. Example: playwright-cli snapshot${sessionFlag}`
                             }
                         ];
 
@@ -231,11 +232,11 @@ export class LangChainAgent {
                 model: chatModel,
                 tools,
                 systemPrompt: `You are a Playwright Test Agent. CRITICAL RULES:
-1. You MUST call at least one Playwright MCP tool for EVERY user instruction
+1. You MUST call playwright-cli commands for EVERY user instruction
 2. NEVER respond based on cached or remembered page state
-3. For verification steps (should see, verify, check, assert): ALWAYS call browser_verify_text_visible or browser_snapshot
-4. For actions (click, type, navigate): ALWAYS call the corresponding browser_* tool
-5. The test will FAIL if you respond without calling a Playwright tool`,
+3. For verification steps (should see, verify, check, assert): ALWAYS call playwright-cli snapshot or playwright-cli evaluate
+4. For actions (click, type, navigate): ALWAYS call the corresponding playwright-cli command
+5. The test will FAIL if you respond without calling a playwright-cli command`,
                 checkpointer: sessionData.checkpointer,
                 middleware: [handleToolErrors, enforceToolUseMiddleware]
             });
@@ -333,7 +334,6 @@ export class LangChainAgent {
             return finalResult;
 
         } catch (error) {
-            // Extract friendly error message if it's a middleware error
             const friendlyMessage = error.message.replace(/^Error in middleware "HandleToolErrors": /, '');
 
             console.error('\n❌ Error running LangChain agent:', friendlyMessage);
@@ -375,42 +375,5 @@ export class LangChainAgent {
             default:
                 throw new Error(`Unsupported provider: ${this.provider}. Supported providers are: anthropic, openai, google`);
         }
-    }
-
-    async _createPlaywrightTools(browserContext) {
-        const mcpServer = await createConnection(
-            { capabilities: ['core', 'testing'] },
-            () => Promise.resolve(browserContext)
-        );
-
-        const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-        await mcpServer.connect(serverTransport);
-
-        const mcpClient = new Client(
-            {
-                name: 'langchain-playwright-client',
-                version: '1.0.0'
-            },
-            {
-                capabilities: {}
-            }
-        );
-
-        await mcpClient.connect(clientTransport);
-        const tools = await loadMcpTools('playwright', mcpClient);
-
-        return {
-            tools,
-            mcpClient,
-            mcpServer,
-            cleanup: async () => {
-                try {
-                    await mcpClient.close();
-                    await mcpServer.close();
-                } catch (error) {
-                    // Ignore cleanup errors
-                }
-            }
-        };
     }
 }

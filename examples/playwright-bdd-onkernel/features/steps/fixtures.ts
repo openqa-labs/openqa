@@ -1,6 +1,7 @@
 import { test as base, createBdd } from 'playwright-bdd';
 import { chromium, Browser } from '@playwright/test';
 import Kernel from '@onkernel/sdk';
+import { createSession, closeSession } from 'openqa';
 import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -37,7 +38,17 @@ type KernelWorkerFixtures = {
   kernelBrowser: KernelBrowserType;
 };
 
-export const test = base.extend<{}, KernelWorkerFixtures>({
+type KernelTestFixtures = {
+  openqaSession: string;
+};
+
+export const test = base.extend<KernelTestFixtures, KernelWorkerFixtures>({
+  openqaSession: async ({}, use) => {
+    const session = createSession();
+    await use(session);
+    await closeSession(session);
+  },
+
   // Override browser to connect to OnKernel cloud browser
   // Scope: 'worker' - one browser per worker, shared across tests
   browser: [async ({}, use) => {

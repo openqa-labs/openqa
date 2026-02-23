@@ -1,91 +1,63 @@
 
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
 /**
  * Manages sessions for Claude Agent
- * Associates browser contexts with session IDs and MCP connections
+ * Associates playwright-cli session names with Claude session IDs
  */
 export class SessionManager {
     constructor() {
         /**
-         * WeakMap to store session IDs associated with browser contexts
-         * Using WeakMap ensures automatic cleanup when contexts are garbage collected
+         * Map to store Claude session IDs associated with playwright-cli session names
+         * Maps sessionName -> claudeSessionId
          */
-        this.contextSessionMap = new WeakMap();
-
-        /**
-         * WeakMap to store MCP connections associated with browser contexts
-         * Each connection contains: { mcpServer, cleanup }
-         */
-        this.mcpConnections = new WeakMap();
-
-        /**
-         * FinalizationRegistry to clean up MCP connections when browser contexts are GC'd
-         */
-        this.registry = new FinalizationRegistry((heldValue) => {
-            if (heldValue.cleanup) {
-                heldValue.cleanup().catch(() => {}); // Ignore cleanup errors
-            }
-        });
+        this.sessionMap = new Map();
     }
 
     /**
-     * Get the session ID for a browser context
-     * @param {BrowserContext} browserContext 
+     * Get the Claude session ID for a session name
+     * @param {string} sessionName
      * @returns {string|undefined}
      */
-    getSession(browserContext) {
-        return this.contextSessionMap.get(browserContext);
+    getSession(sessionName) {
+        return this.sessionMap.get(sessionName);
     }
 
     /**
-     * Set the session ID for a browser context
-     * @param {BrowserContext} browserContext
-     * @param {string} sessionId
+     * Set the Claude session ID for a session name
+     * @param {string} sessionName
+     * @param {string} claudeSessionId
      */
-    setSession(browserContext, sessionId) {
-        this.contextSessionMap.set(browserContext, sessionId);
+    setSession(sessionName, claudeSessionId) {
+        this.sessionMap.set(sessionName, claudeSessionId);
     }
 
     /**
-     * Get the MCP connection for a browser context
-     * @param {BrowserContext} browserContext
-     * @returns {Object|undefined} Connection object with mcpServer and cleanup function
+     * Reset the session for a specific session name (removes mapping, does not close browser)
+     * @param {string} sessionName
+     * @returns {string|null} The removed Claude session ID or null
      */
-    getMcpConnection(browserContext) {
-        return this.mcpConnections.get(browserContext);
+    resetSession(sessionName) {
+        const claudeSessionId = this.sessionMap.get(sessionName);
+        this.sessionMap.delete(sessionName);
+        return claudeSessionId || null;
     }
 
     /**
-     * Set the MCP connection for a browser context
-     * Registers cleanup via FinalizationRegistry for when context is GC'd
-     * @param {BrowserContext} browserContext
-     * @param {Object} connection - Object containing mcpServer and cleanup function
+     * Close a playwright-cli browser session and clean up
+     * @param {string} sessionName - Session name to close
+     * @returns {Promise<void>}
      */
-    setMcpConnection(browserContext, connection) {
-        this.mcpConnections.set(browserContext, connection);
-        // Register cleanup when browser context is garbage collected
-        this.registry.register(browserContext, connection);
-    }
-
-    /**
-     * Reset the session for a specific browser context
-     * Also cleans up MCP connection if present
-     * @param {BrowserContext} browserContext
-     * @returns {string|null} The removed session ID or null
-     */
-    resetSession(browserContext) {
-        const sessionId = this.contextSessionMap.get(browserContext);
-
-        // Clean up MCP connection
-        const connection = this.mcpConnections.get(browserContext);
-        if (connection?.cleanup) {
-            connection.cleanup().catch(() => {}); // Ignore cleanup errors
+    async closeSession(sessionName) {
+        this.sessionMap.delete(sessionName);
+        try {
+            await execAsync(`playwright-cli close -s=${sessionName}`);
+        } catch (error) {
+            // Ignore close errors - session may already be closed
         }
-
-        // Remove from maps
-        this.contextSessionMap.delete(browserContext);
-        this.mcpConnections.delete(browserContext);
-
-        return sessionId || null;
     }
 }
 

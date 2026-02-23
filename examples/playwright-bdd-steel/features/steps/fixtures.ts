@@ -1,5 +1,6 @@
 import { test as base, createBdd } from 'playwright-bdd';
 import { chromium, Browser } from '@playwright/test';
+import { createSession, closeSession } from 'openqa';
 import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -33,11 +34,21 @@ config({ path: join(__dirname, '../../../../.env') });
  * - No SDK dependencies needed (direct CDP connection)
  */
 
+type SteelTestFixtures = {
+  openqaSession: string;
+};
+
 type SteelWorkerFixtures = {
   browser: Browser;
 };
 
-export const test = base.extend<{}, SteelWorkerFixtures>({
+export const test = base.extend<SteelTestFixtures, SteelWorkerFixtures>({
+  openqaSession: async ({}, use) => {
+    const session = createSession();
+    await use(session);
+    await closeSession(session);
+  },
+
   // Override browser to connect to Steel Docker browser
   // Scope: 'worker' - one browser connection per worker, shared across tests
   browser: [async ({}, use) => {

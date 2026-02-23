@@ -9,44 +9,43 @@ import { sessionManager } from './SessionManager.js';
 import { LangChainAgent, langChainSessionManager } from './LangChainAgent.js';
 
 /**
- * Run Claude agent with a specific browser context and automatic session management
+ * Run Claude agent with session-based browser management
  * @param {string} prompt - Natural language instruction
- * @param {Page|BrowserContext} pageOrContext - Playwright page or browser context from test
  * @param {object} options - Optional configuration
+ * @param {string} options.session - playwright-cli session name
  * @returns {Promise<string>} - The final result
  */
-export async function runClaudeAgent(prompt, pageOrContext, options = {}) {
+export async function runClaudeAgent(prompt, options = {}) {
     const agent = new ClaudeAgent(options);
-    return agent.run(prompt, pageOrContext);
+    return agent.run(prompt, options);
 }
 
 /**
- * Reset the session for a specific browser context
- * Useful for edge cases where you want to start fresh mid-test
- * @param {BrowserContext} browserContext - The browser context to reset
+ * Reset the session for a specific session name
+ * @param {string} sessionName - The playwright-cli session name to reset
  * @returns {string|null} - The session ID that was reset, or null if none existed
  */
-runClaudeAgent.resetSession = function (browserContext) {
-    return sessionManager.resetSession(browserContext);
+runClaudeAgent.resetSession = function (sessionName) {
+    return sessionManager.resetSession(sessionName);
 };
 
 /**
- * Run LangChain agent with a specific browser context and automatic session management
+ * Run LangChain agent with session-based browser management
  * @param {string} prompt - Natural language instruction
- * @param {Page|BrowserContext} pageOrContext - Playwright page or browser context from test
  * @param {object} options - Optional configuration
+ * @param {string} options.session - playwright-cli session name
  * @returns {Promise<string>} - The final result
  */
-export async function runLangChainAgent(prompt, pageOrContext, options = {}) {
+export async function runLangChainAgent(prompt, options = {}) {
     const agent = new LangChainAgent(options);
-    return agent.run(prompt, pageOrContext);
+    return agent.run(prompt, options);
 }
 
 /**
- * Reset the session for a specific browser context
- * @param {BrowserContext} browserContext - The browser context to reset
+ * Reset the session for a specific session name
+ * @param {string} sessionName - The playwright-cli session name to reset
  * @returns {Promise<string|null>} - The session ID that was reset, or null if none existed
  */
-runLangChainAgent.resetSession = async function (browserContext) {
-    return langChainSessionManager.resetSession(browserContext);
+runLangChainAgent.resetSession = async function (sessionName) {
+    return langChainSessionManager.resetSession(sessionName);
 };

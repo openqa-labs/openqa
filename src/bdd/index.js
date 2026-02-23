@@ -58,9 +58,6 @@ export function useBDD(framework = 'auto', options = {}) {
     case 'cucumber.js':
     case '@cucumber/cucumber':
       const cucumber = require('./cucumber.js');
-      if (!options.disableAutoBrowserSetup) {
-        cucumber.enableAutoBrowserSetup(options.browserOptions);
-      }
       if (options.pattern || options.agentType || options.verbose !== undefined) {
         cucumber.createAIStep(options);
       }
@@ -87,5 +84,4 @@ export { createAIStep as createPlaywrightBddAIStep, test, Given, When, Then, Ste
 export {
   createAIStep as createCucumberAIStep,
   createAIStepWithContext,
-  enableAutoBrowserSetup
 } from './cucumber.js';
