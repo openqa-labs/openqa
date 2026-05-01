@@ -82,7 +82,7 @@ export const claudeCode = (model = "claude-3-5-haiku-20241022", options = {}) =>
     const skipPerms = dangerouslySkipPermissions
       ? " --dangerously-skip-permissions"
       : "";
-    const mcpFlag = mcpConfigPath ? ` --strict-mcp-config ${shellEscape(mcpConfigPath)}` : "";
+    const mcpFlag = mcpConfigPath ? ` --mcp-config ${shellEscape(mcpConfigPath)} --strict-mcp-config` : "";
     const resumeFlag = resumeSession ? ` --resume ${shellEscape(resumeSession)}` : "";
     return {
       command: `npx @anthropic-ai/claude-code --print --verbose${skipPerms}${mcpFlag} --output-format stream-json --model ${shellEscape(model)}${resumeFlag} -p -`,
