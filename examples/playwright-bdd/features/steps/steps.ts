@@ -7,5 +7,5 @@ import { aistep } from './fixtures';
 // Uses agent configured via AGENT_TYPE env var or defaults to 'claude'
 aistep(/^(.*)$/, async ({ page, context }, action: string) => {
     console.log(`Executing AI step: ${action}`);
-    await runAgent(claudeCode('claude-3-5-haiku-20241022'), action, page, { verbose: true });
+    await runAgent(claudeCode('claude-haiku-4-5'), action, page, { verbose: true });
 });

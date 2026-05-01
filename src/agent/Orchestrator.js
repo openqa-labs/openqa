@@ -56,7 +56,7 @@ export class Orchestrator {
 
         // 3. Create Bridge artifacts for the claude CLI to connect to the TCP socket
         const bridgeScriptPath = path.join(process.cwd(), '.openqa-bridge.js');
-        const mcpConfigPath = path.join(process.cwd(), '.openqa-mcp.json');
+        const mcpConfigPath = path.join(process.cwd(), '.mcp.json');
 
         await fs.writeFile(bridgeScriptPath, `
 import net from 'net';

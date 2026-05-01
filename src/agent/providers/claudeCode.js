@@ -78,13 +78,12 @@ export const claudeCode = (model = "claude-3-5-haiku-20241022", options = {}) =>
   env: options.env ?? {},
   captureSessions: options.captureSessions ?? true,
 
-  buildPrintCommand({ prompt, mcpConfigPath, dangerouslySkipPermissions }) {
+  buildPrintCommand({ prompt, dangerouslySkipPermissions }) {
     const skipPerms = dangerouslySkipPermissions
       ? " --dangerously-skip-permissions"
       : "";
-    const mcpConfigFlag = mcpConfigPath ? ` --strict-mcp-config ${shellEscape(mcpConfigPath)}` : "";
     return {
-      command: `npx @anthropic-ai/claude-code --print --verbose${skipPerms}${mcpConfigFlag} --output-format stream-json --model ${shellEscape(model)} -p -`,
+      command: `npx @anthropic-ai/claude-code --print --verbose${skipPerms} --output-format stream-json --model ${shellEscape(model)} -p -`,
       stdin: prompt,
     };
   },
