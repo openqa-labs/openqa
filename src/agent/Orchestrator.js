@@ -5,6 +5,7 @@ import net from 'net';
 import fs from 'fs/promises';
 import path from 'path';
 import { Logger } from './Logger.js';
+import { sessionManager } from './SessionManager.js';
 
 export class Orchestrator {
     constructor(options = {}) {
@@ -27,6 +28,11 @@ export class Orchestrator {
         if (this.verbose) {
             this.logger.log(`🤖 Running Orchestrator with provider: ${provider.name}\n`);
             this.logger.logContext(browserContext, inputPage);
+        }
+
+        const existingSessionId = sessionManager.getSession(browserContext);
+        if (existingSessionId && this.verbose) {
+            this.logger.log(`♻️  SESSION: Resuming session: ${existingSessionId}\n`);
         }
 
         const systemPrompt = `You are a Playwright Test Agent. CRITICAL RULES:
@@ -80,7 +86,8 @@ socket.on('error', () => process.exit(1));
         const { command, stdin } = provider.buildPrintCommand({
             prompt: fullPrompt,
             mcpConfigPath: mcpConfigPath,
-            dangerouslySkipPermissions: true // skip workspace trust prompts in CI/tests
+            dangerouslySkipPermissions: true, // skip workspace trust prompts in CI/tests
+            resumeSession: existingSessionId
         });
 
         if (this.verbose) {
@@ -91,6 +98,7 @@ socket.on('error', () => process.exit(1));
             let finalResult = '';
             let stepCount = 0;
             const fullOutput = [];
+            let currentSessionId = existingSessionId;
 
             // Spawn the subprocess using the shell so that the CLI args parse properly
             const child = spawn(command, {
@@ -119,7 +127,13 @@ socket.on('error', () => process.exit(1));
                     if (line) {
                         const events = provider.parseStreamLine(line);
                         for (const event of events) {
-                            if (event.type === 'text') {
+                            if (event.type === 'session_id') {
+                                currentSessionId = event.sessionId;
+                                sessionManager.setSession(browserContext, currentSessionId);
+                                if (!existingSessionId && this.verbose) {
+                                    this.logger.log(`🆕 Started new session: ${currentSessionId}\n`);
+                                }
+                            } else if (event.type === 'text') {
                                 if (this.verbose) this.logger.log(`💬 Assistant: ${event.text}`);
                             } else if (event.type === 'tool_call') {
                                 stepCount++;
@@ -155,6 +169,7 @@ socket.on('error', () => process.exit(1));
                         result: finalResult.trim(),
                         usage: usage || {},
                         steps: stepCount,
+                        sessionId: currentSessionId,
                         provider: provider.name
                     });
                 } else {
