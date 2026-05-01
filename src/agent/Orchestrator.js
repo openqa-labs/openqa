@@ -68,9 +68,16 @@ export class Orchestrator {
         await new Promise(resolve => tcpServer.listen(0, '127.0.0.1', resolve));
         const tcpPort = tcpServer.address().port;
 
-        // 3. Create Bridge artifacts for the claude CLI to connect to the TCP socket
-        const bridgeScriptPath = path.join(process.cwd(), '.openqa-bridge.js');
-        const mcpConfigPath = path.join(process.cwd(), '.mcp.json');
+        // 3. Create unique Bridge artifacts for the claude CLI to connect to the TCP socket
+        // We must use a unique directory for each run so parallel tests don't overwrite each other's .mcp.json
+        const crypto = await import('crypto');
+        const os = await import('os');
+        const runId = crypto.randomUUID();
+        const tempDir = path.join(os.tmpdir(), `openqa-mcp-${runId}`);
+        await fs.mkdir(tempDir, { recursive: true });
+
+        const bridgeScriptPath = path.join(tempDir, '.openqa-bridge.js');
+        const mcpConfigPath = path.join(tempDir, '.mcp.json');
 
         await fs.writeFile(bridgeScriptPath, `
 import net from 'net';
@@ -93,7 +100,6 @@ socket.on('error', () => process.exit(1));
         // 4. Build and spawn the Print Command
         const { command, stdin } = provider.buildPrintCommand({
             prompt: fullPrompt,
-            mcpConfigPath: mcpConfigPath,
             dangerouslySkipPermissions: true, // skip workspace trust prompts in CI/tests
             resumeSession: existingSessionId
         });
@@ -110,6 +116,7 @@ socket.on('error', () => process.exit(1));
 
             // Spawn the subprocess using the shell so that the CLI args parse properly
             const child = spawn(command, {
+                cwd: tempDir, // <-- Run from the temp dir so it natively finds .mcp.json
                 shell: true,
                 stdio: ['pipe', 'pipe', 'inherit']
             });
@@ -162,6 +169,7 @@ socket.on('error', () => process.exit(1));
                     tcpServer.close();
                     await fs.unlink(bridgeScriptPath).catch(() => {});
                     await fs.unlink(mcpConfigPath).catch(() => {});
+                    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
                 } catch (e) {
                     // Ignore
                 }
