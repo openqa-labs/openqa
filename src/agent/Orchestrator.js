@@ -45,10 +45,18 @@ export class Orchestrator {
         // Combine prompt and system prompt
         const fullPrompt = `${systemPrompt}\n\nUser Instruction: ${prompt}`;
 
+        // Create MCP connection with a custom context getter
+        // The context getter wraps the browser context with a no-op close function
+        // This prevents the MCP server from disposing our externally-managed browser context
+        const contextWithManagedLifecycle = Object.create(browserContext);
+        contextWithManagedLifecycle.close = async () => {
+            // No-op: browser context is managed externally by Playwright test fixtures
+        };
+
         // 1. Setup MCP Server (in-memory, tied to the Playwright test context)
         const mcpServer = await createConnection(
             { capabilities: ['core', 'testing'] },
-            () => Promise.resolve(browserContext)
+            () => Promise.resolve(contextWithManagedLifecycle)
         );
 
         // 2. Setup local TCP Server to wrap the MCP Server in StdioServerTransport
