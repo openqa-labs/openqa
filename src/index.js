@@ -1,5 +1,7 @@
 import { runClaudeAgent } from './agent/index.js';
 import { runLangChainAgent } from './agent/index.js';
+import { Orchestrator } from './agent/Orchestrator.js';
+import { claudeApi } from './agent/providers/claudeApi.js';
 import { config } from 'dotenv';
 
 // Load environment variables from project's .env file (where the user runs the tests)
@@ -7,32 +9,30 @@ import { config } from 'dotenv';
 config();
 
 /**
- * Unified Browser Agent Interface
- *
- * Provides a single interface to run any of the two supported agents:
- * - Claude Agent SDK (claude)
- * - LangChain Agent (langchain)
- *
- * Configuration:
- * - Via environment variable: AGENT_TYPE=claude|langchain
- * - Via options: options.agentType='claude'|'langchain'
- * - Priority: options.agentType > AGENT_TYPE env var > default (claude)
- */
-
-/**
  * Run browser agent with configurable backend
+ * 
+ * New API:
+ * @param {object} provider - Agent Provider (e.g. claudeApi('claude-3-5-haiku-20241022'))
  * @param {string} prompt - Natural language instruction
  * @param {Page|BrowserContext} pageOrContext - Playwright page or browser context from test
  * @param {object} options - Optional configuration
- * @param {string} options.agentType - Agent type: 'claude' or 'langchain'
- * @param {string} options.provider - AI provider (for langchain): 'anthropic', 'openai', or 'google'
- * @param {string} options.model - Model name (provider-specific)
- * @param {boolean} options.verbose - Enable verbose logging (default: true)
- * @param {boolean} options.returnUsage - Return usage statistics (default: false)
- * @param {object} options.modelConfig - Additional model configuration
- * @returns {Promise<string|object>} - The final result or result with usage data
+ * 
+ * Legacy API:
+ * @param {string} prompt - Natural language instruction
+ * @param {Page|BrowserContext} pageOrContext - Playwright page or browser context from test
+ * @param {object} options - Optional configuration
  */
-export async function runAgent(prompt, pageOrContext, options = {}) {
+export async function runAgent(...args) {
+  // New API signature: runAgent(provider, prompt, pageOrContext, options)
+  if (typeof args[0] === 'object' && args[0] !== null && typeof args[0].execute === 'function') {
+    const [provider, prompt, pageOrContext, options = {}] = args;
+    const orchestrator = new Orchestrator(options);
+    return orchestrator.run(provider, prompt, pageOrContext);
+  }
+
+  // Old API signature: runAgent(prompt, pageOrContext, options)
+  const [prompt, pageOrContext, options = {}] = args;
+
   // Determine which agent to use
   // Priority: options.agentType > AGENT_TYPE env var > default (claude)
   const agentType = options.agentType || process.env.AGENT_TYPE || 'claude';
@@ -40,7 +40,7 @@ export async function runAgent(prompt, pageOrContext, options = {}) {
   const verbose = options.verbose !== false;
 
   if (verbose) {
-    console.log(`🎯 Using agent type: ${agentType}\n`);
+    console.log(`🎯 Using legacy agent type: ${agentType}\n`);
   }
 
   // Route to the appropriate agent
@@ -86,5 +86,6 @@ runAgent.resetSession = async function (browserContext, options = {}) {
   }
 };
 
-// Also export individual agents for direct access
+// Also export individual agents and providers for direct access
 export { runClaudeAgent, runLangChainAgent } from './agent/index.js';
+export { Orchestrator, claudeApi };
