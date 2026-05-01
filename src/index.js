@@ -1,7 +1,7 @@
 import { runClaudeAgent } from './agent/index.js';
 import { runLangChainAgent } from './agent/index.js';
 import { Orchestrator } from './agent/Orchestrator.js';
-import { claudeApi } from './agent/providers/claudeApi.js';
+import { claudeCode } from './agent/providers/claudeCode.js';
 import { config } from 'dotenv';
 
 // Load environment variables from project's .env file (where the user runs the tests)
@@ -24,7 +24,8 @@ config();
  */
 export async function runAgent(...args) {
   // New API signature: runAgent(provider, prompt, pageOrContext, options)
-  if (typeof args[0] === 'object' && args[0] !== null && typeof args[0].execute === 'function') {
+  if (typeof args[0] === 'object' && args[0] !== null && 
+     (typeof args[0].execute === 'function' || typeof args[0].buildPrintCommand === 'function')) {
     const [provider, prompt, pageOrContext, options = {}] = args;
     const orchestrator = new Orchestrator(options);
     return orchestrator.run(provider, prompt, pageOrContext);
@@ -88,4 +89,5 @@ runAgent.resetSession = async function (browserContext, options = {}) {
 
 // Also export individual agents and providers for direct access
 export { runClaudeAgent, runLangChainAgent } from './agent/index.js';
-export { Orchestrator, claudeApi };
+export { Orchestrator };
+export { claudeCode } from './agent/providers/claudeCode.js';

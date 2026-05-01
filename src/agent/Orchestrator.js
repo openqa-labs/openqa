@@ -1,6 +1,9 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createConnection } from '@playwright/mcp';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { spawn } from 'child_process';
+import net from 'net';
+import fs from 'fs/promises';
+import path from 'path';
 import { Logger } from './Logger.js';
 
 export class Orchestrator {
@@ -26,30 +29,6 @@ export class Orchestrator {
             this.logger.logContext(browserContext, inputPage);
         }
 
-        // 1. Setup MCP Server
-        const mcpServer = await createConnection(
-            { capabilities: ['core', 'testing'] },
-            () => Promise.resolve(browserContext)
-        );
-
-        // 2. Setup MCP Client via InMemoryTransport
-        const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-        await mcpServer.connect(serverTransport);
-
-        const mcpClient = new Client(
-            { name: 'openqa-orchestrator', version: '1.0.0' },
-            { capabilities: {} }
-        );
-        await mcpClient.connect(clientTransport);
-
-        // 3. Extract Tools
-        const toolsResponse = await mcpClient.listTools();
-        const tools = toolsResponse.tools;
-
-        if (this.verbose) {
-            this.logger.log(`✅ Loaded ${tools.length} Playwright MCP tools\n`);
-        }
-
         const systemPrompt = `You are a Playwright Test Agent. CRITICAL RULES:
 1. You MUST call at least one Playwright MCP tool for EVERY user instruction
 2. NEVER respond based on cached or remembered page state
@@ -57,90 +36,136 @@ export class Orchestrator {
 4. For actions (click, type, navigate): ALWAYS call the corresponding browser_* tool
 5. The test will FAIL if you respond without calling a Playwright tool`;
 
-        // 4. Start execution loop
-        const generator = provider.execute(prompt, systemPrompt, tools);
-        let nextInput = undefined;
-        let finalResult = '';
-        let totalUsage = null;
-        let stepCount = 0;
+        // Combine prompt and system prompt
+        const fullPrompt = `${systemPrompt}\n\nUser Instruction: ${prompt}`;
 
-        try {
-            while (true) {
-                const { value: event, done } = await generator.next(nextInput);
-                
-                if (done) break;
+        // 1. Setup MCP Server (in-memory, tied to the Playwright test context)
+        const mcpServer = await createConnection(
+            { capabilities: ['core', 'testing'] },
+            () => Promise.resolve(browserContext)
+        );
 
-                if (event.type === 'text') {
-                    if (this.verbose) {
-                        this.logger.logAssistantMessage(event.text);
-                    }
-                    nextInput = undefined;
-                } else if (event.type === 'tool_call') {
-                    if (this.verbose) {
-                        console.log(`🔧 Calling tool: ${event.name}`);
-                    }
-                    stepCount++;
-                    
-                    try {
-                        const mcpResult = await mcpClient.callTool({
-                            name: event.name,
-                            arguments: event.args
-                        });
-                        
-                        nextInput = {
-                            content: mcpResult.content.map(c => c.text).join('\n'),
-                            isError: mcpResult.isError || false
-                        };
-                        
-                        if (mcpResult.isError && this.verbose) {
-                            this.logger.logToolFailure(event.name, nextInput.content);
-                        }
-                    } catch (err) {
-                        if (this.verbose) {
-                            this.logger.logToolFailure(event.name, err.message);
-                        }
-                        nextInput = {
-                            content: err.message,
-                            isError: true
-                        };
-                    }
-                } else if (event.type === 'result') {
-                    finalResult = event.result;
-                    totalUsage = event.usage;
-                    if (this.verbose) {
-                        this.logger.logResult(finalResult);
-                    }
-                    nextInput = undefined;
+        // 2. Setup local TCP Server to wrap the MCP Server in StdioServerTransport
+        const tcpServer = net.createServer((socket) => {
+            const transport = new StdioServerTransport(socket, socket);
+            mcpServer.connect(transport);
+        });
+
+        await new Promise(resolve => tcpServer.listen(0, '127.0.0.1', resolve));
+        const tcpPort = tcpServer.address().port;
+
+        // 3. Create Bridge artifacts for the claude CLI to connect to the TCP socket
+        const bridgeScriptPath = path.join(process.cwd(), '.openqa-bridge.js');
+        const mcpConfigPath = path.join(process.cwd(), '.openqa-mcp.json');
+
+        await fs.writeFile(bridgeScriptPath, `
+import net from 'net';
+const socket = net.createConnection(${tcpPort}, () => {
+    process.stdin.pipe(socket);
+    socket.pipe(process.stdout);
+});
+socket.on('error', () => process.exit(1));
+        `.trim());
+
+        await fs.writeFile(mcpConfigPath, JSON.stringify({
+            mcpServers: {
+                playwright: {
+                    command: 'node',
+                    args: [bridgeScriptPath]
                 }
             }
-            
-            if (this.verbose && totalUsage) {
-                console.log('\n📊 USAGE SUMMARY');
-                console.log(`├─ Steps: ${stepCount}`);
-                console.log(`├─ Input tokens: ${totalUsage.input_tokens || 0}`);
-                console.log(`├─ Output tokens: ${totalUsage.output_tokens || 0}`);
-                console.log(`└─ Provider: ${provider.name}\n`);
-            }
+        }, null, 2));
 
-        } finally {
-            // Cleanup
-            try {
-                await mcpClient.close();
-                await mcpServer.close();
-            } catch (e) {
-                // Ignore cleanup errors
-            }
+        // 4. Build and spawn the Print Command
+        const { command, stdin } = provider.buildPrintCommand({
+            prompt: fullPrompt,
+            mcpConfigPath: mcpConfigPath,
+            dangerouslySkipPermissions: true // skip workspace trust prompts in CI/tests
+        });
+
+        if (this.verbose) {
+            this.logger.log(`🚀 Spawning: ${command}`);
         }
 
-        if (this.options.returnUsage) {
-            return {
-                result: finalResult,
-                usage: totalUsage,
-                steps: stepCount,
-                provider: provider.name
-            };
-        }
+        return new Promise((resolve, reject) => {
+            let finalResult = '';
+            let stepCount = 0;
+            const fullOutput = [];
 
-        return finalResult;
+            // Spawn the subprocess using the shell so that the CLI args parse properly
+            const child = spawn(command, {
+                shell: true,
+                stdio: ['pipe', 'pipe', 'inherit']
+            });
+
+            // If provider specified stdin, write it
+            if (stdin) {
+                child.stdin.write(stdin);
+                child.stdin.end();
+            }
+
+            // Stream parsing
+            let buffer = '';
+            child.stdout.on('data', (data) => {
+                const chunk = data.toString('utf-8');
+                fullOutput.push(chunk);
+                buffer += chunk;
+                
+                let newlineIndex;
+                while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+                    const line = buffer.slice(0, newlineIndex).trim();
+                    buffer = buffer.slice(newlineIndex + 1);
+                    
+                    if (line) {
+                        const events = provider.parseStreamLine(line);
+                        for (const event of events) {
+                            if (event.type === 'text') {
+                                if (this.verbose) this.logger.log(`💬 Assistant: ${event.text}`);
+                            } else if (event.type === 'tool_call') {
+                                stepCount++;
+                                if (this.verbose) this.logger.log(`🔧 Tool Call: ${event.name}(${event.args})`);
+                            } else if (event.type === 'result') {
+                                finalResult += event.result + '\n';
+                                if (this.verbose) this.logger.log(`✅ Result: ${event.result}`);
+                            }
+                        }
+                    }
+                }
+            });
+
+            child.on('close', async (code) => {
+                // Cleanup
+                try {
+                    await mcpServer.close();
+                    tcpServer.close();
+                    await fs.unlink(bridgeScriptPath).catch(() => {});
+                    await fs.unlink(mcpConfigPath).catch(() => {});
+                } catch (e) {
+                    // Ignore
+                }
+
+                if (code !== 0) {
+                    return reject(new Error(`Agent provider exited with code ${code}`));
+                }
+
+                const usage = provider.parseSessionUsage?.(fullOutput.join(''));
+
+                if (this.options.returnUsage) {
+                    resolve({
+                        result: finalResult.trim(),
+                        usage: usage || {},
+                        steps: stepCount,
+                        provider: provider.name
+                    });
+                } else {
+                    resolve(finalResult.trim());
+                }
+            });
+
+            child.on('error', (err) => {
+                tcpServer.close();
+                reject(err);
+            });
+        });
     }
 }
