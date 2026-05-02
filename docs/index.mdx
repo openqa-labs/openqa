@@ -1,62 +1,67 @@
 ---
 title: "Introduction"
-description: "OpenQA — an agent harness for browser test automation. Write tests in natural language. AI handles the automation."
+description: "OpenQA — an agent harness for browser test automation. Write feature files in plain English. Run them. That's it."
 ---
 
 # OpenQA
 
-**OpenQA is an agent harness for browser test automation.** Write your tests in plain English. A Claude Code agent drives the real browser and executes every step autonomously.
+**An agent harness for browser test automation.**
+
+Write your tests in plain English. Run `npx openqa init`. Done.
 
 <Note>
-  An **agent harness** (as described by [Martin Fowler](https://martinfowler.com/articles/harness-engineering.html) and [Anthropic](https://www.anthropic.com/engineering/managed-agents)) is the infrastructure around an AI model — the scaffolding, tool connections, and control loops that allow an agent to operate reliably within your system. OpenQA is a harness built specifically for browser testing.
+  An **agent harness** (coined by [Martin Fowler](https://martinfowler.com/articles/harness-engineering.html) and described by [Anthropic](https://www.anthropic.com/engineering/managed-agents)) is the infrastructure that wraps an AI model — connecting it to tools, managing its context, and steering its behaviour. OpenQA is that harness, purpose-built for browser testing.
 </Note>
 
 <CardGroup cols={2}>
-  <Card title="Natural Language Tests" icon="message">
-    Write tests as plain English steps. No selectors. No flake. The agent reads the page and acts.
+  <Card title="No Code Required" icon="wand-magic-sparkles">
+    Write feature files in plain English. The harness wires Claude Code to your browser automatically.
   </Card>
   <Card title="BDD & YAML Support" icon="file-code">
-    Works with Playwright-BDD, Cucumber.js, or simple YAML files — no step definitions needed.
+    Works with Playwright-BDD, Cucumber.js, or simple YAML files — no step definitions to write.
   </Card>
-  <Card title="Claude Code Agent" icon="microchip-ai">
-    Powered by Claude Code CLI as the agent backend. No API key required locally — uses your `claude login` session.
+  <Card title="No API Key Locally" icon="shield-check">
+    Uses your existing `claude login` session. API keys only needed for CI.
   </Card>
   <Card title="2-Minute Setup" icon="rocket">
-    `npx openqa init` scaffolds a `.openqa/` harness into your existing project.
+    `npx openqa init` scaffolds a complete `.openqa/` harness into your existing project.
   </Card>
 </CardGroup>
 
-## How It Works
+## All You Need to Write
 
-OpenQA implements the **agent harness** pattern for testing:
+A `.feature` file:
 
-1. Your BDD step or YAML test calls `runAgent(claudeCode('model'), 'natural language step', page)`
-2. The harness spawns a **Claude Code CLI** subprocess (your AI brain)
-3. Claude receives a live connection to **your Playwright browser** via `@playwright/mcp`
-4. Claude reads the page, clicks, types, and verifies — using real browser tools
-5. The step passes or fails based on what Claude reports back
+```gherkin
+Feature: TodoMVC Automation
 
-```typescript
-import { test } from "@playwright/test";
-import { runAgent, claudeCode } from "openqa";
-
-test("AI fills form", async ({ page }) => {
-  await page.goto("https://example.com/form");
-  await runAgent(claudeCode('claude-haiku-4-5'), "Fill the contact form with test data", page);
-});
+  Scenario: Add todo item
+    * I navigate to "https://demo.playwright.dev/todomvc/"
+    * I add a new todo item "Buy groceries"
+    * I should see "Buy groceries" in the todo list
 ```
+
+Then run:
+
+```bash
+npx openqa init   # one-time setup
+cd .openqa
+npm run test:headed
+```
+
+That's it. No step definitions. No selectors. No code.
 
 ## Quick Links
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="play" href="/quickstart">
-    New project? Start here.
+    Set up in 2 minutes.
   </Card>
-  <Card title="Playwright-BDD" icon="plug" href="/integrations/playwright-bdd">
-    Gherkin feature files with AI steps.
+  <Card title="Playwright-BDD" icon="cucumber" href="/integrations/playwright-bdd">
+    Gherkin feature files.
   </Card>
-  <Card title="API Reference" icon="code" href="/api/run-agent">
-    Full `runAgent()` and `claudeCode()` documentation.
+  <Card title="Cucumber.js" icon="leaf" href="/integrations/cucumber">
+    Standard Cucumber.
   </Card>
   <Card title="Examples" icon="folder-open" href="/examples">
     Browse example projects.
