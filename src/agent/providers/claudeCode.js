@@ -95,7 +95,7 @@ const parseStreamJsonLine = (line) => {
   return [];
 };
 
-export const claudeCode = (model = "claude-3-5-haiku-20241022", options = {}) => ({
+export const claudeCode = (model = "claude-haiku-4-5", options = {}) => ({
   name: "claude-code",
   env: options.env ?? {},
   captureSessions: options.captureSessions ?? true,

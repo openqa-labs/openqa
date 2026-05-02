@@ -73,7 +73,7 @@ The key innovation is using a **single generic step** that handles ALL steps wit
 ```javascript
 import { defineStep, Before, After } from '@cucumber/cucumber';
 import { chromium } from 'playwright';
-import { runAgentWithContext } from 'autobrowse-agent';
+import { runAgent, claudeCode } from 'openqa';
 
 Before(async function () {
   browser = await chromium.launch({ headless: true });
@@ -89,7 +89,7 @@ After(async function () {
 
 // Generic AI step - handles ALL Given/When/Then steps
 defineStep(/^(.*)$/, async function (action) {
-  await runAgentWithContext(action, context, { verbose: false });
+  await runAgent(claudeCode('claude-haiku-4-5'), action, context, { verbose: false });
 });
 ```
 
