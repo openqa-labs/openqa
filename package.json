@@ -1,7 +1,7 @@
 {
   "name": "openqa",
   "version": "0.0.6",
-  "description": "AI-powered Browser automation in Natural Language using playwright mcp",
+  "description": "Agent Harness for Browser Test Automation — write tests in natural language, powered by Claude Code",
   "type": "module",
   "bin": {
     "openqa": "./src/cli/bin.js"
@@ -24,10 +24,10 @@
     "behavior-driven-development"
   ],
   "author": "Gurvinder Dhillon",
-  "homepage": "https://www.auto-browse.com/",
+  "homepage": "https://www.openqa.io/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/auto-browse/openqa.git"
+    "url": "git+https://github.com/openqa-labs/openqa.git"
   },
   "license": "MIT",
   "files": [

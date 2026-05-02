@@ -1,42 +1,48 @@
 ---
 title: "Introduction"
-description: "AI Powered Natural Language Browser Test Automation. No selectors. No flake. Just plain English."
+description: "OpenQA — an agent harness for browser test automation. Write tests in natural language. AI handles the automation."
 ---
 
 # OpenQA
 
-Write browser tests in natural language. AI handles the automation.
+**OpenQA is an agent harness for browser test automation.** Write your tests in plain English. A Claude Code agent drives the real browser and executes every step autonomously.
+
+<Note>
+  An **agent harness** (as described by [Martin Fowler](https://martinfowler.com/articles/harness-engineering.html) and [Anthropic](https://www.anthropic.com/engineering/managed-agents)) is the infrastructure around an AI model — the scaffolding, tool connections, and control loops that allow an agent to operate reliably within your system. OpenQA is a harness built specifically for browser testing.
+</Note>
 
 <CardGroup cols={2}>
-  <Card title="Plain English Tests" icon="message">
-    Describe what you want, not how to find it. "Click the submit button" just works.
+  <Card title="Natural Language Tests" icon="message">
+    Write tests as plain English steps. No selectors. No flake. The agent reads the page and acts.
   </Card>
   <Card title="BDD & YAML Support" icon="file-code">
-    Works with Playwright-BDD, Cucumber.js, or simple YAML files.
+    Works with Playwright-BDD, Cucumber.js, or simple YAML files — no step definitions needed.
   </Card>
-  <Card title="Any LLM Provider" icon="microchip-ai">
-    Claude, OpenAI, or Gemini. Use the model that fits your needs.
+  <Card title="Claude Code Agent" icon="microchip-ai">
+    Powered by Claude Code CLI as the agent backend. No API key required locally — uses your `claude login` session.
   </Card>
   <Card title="2-Minute Setup" icon="rocket">
-    `npx openqa init` and you're running tests.
+    `npx openqa init` scaffolds a `.openqa/` harness into your existing project.
   </Card>
 </CardGroup>
 
 ## How It Works
 
-OpenQA connects an AI agent to your Playwright browser context. The agent:
+OpenQA implements the **agent harness** pattern for testing:
 
-1. Receives your natural language instruction
-2. Analyzes the current page via Playwright MCP
-3. Executes the appropriate browser actions
-4. Shares session state with your test code
+1. Your BDD step or YAML test calls `runAgent(claudeCode('model'), 'natural language step', page)`
+2. The harness spawns a **Claude Code CLI** subprocess (your AI brain)
+3. Claude receives a live connection to **your Playwright browser** via `@playwright/mcp`
+4. Claude reads the page, clicks, types, and verifies — using real browser tools
+5. The step passes or fails based on what Claude reports back
 
 ```typescript
 import { test } from "@playwright/test";
-import { runAgent } from "openqa";
+import { runAgent, claudeCode } from "openqa";
 
-test("AI fills form", async ({ context }) => {
-  await runAgent("Fill the contact form with test data", context);
+test("AI fills form", async ({ page }) => {
+  await page.goto("https://example.com/form");
+  await runAgent(claudeCode('claude-haiku-4-5'), "Fill the contact form with test data", page);
 });
 ```
 
@@ -46,11 +52,11 @@ test("AI fills form", async ({ context }) => {
   <Card title="Quickstart" icon="play" href="/quickstart">
     New project? Start here.
   </Card>
-  <Card title="Playwright Integration" icon="plug" href="/integrations/playwright">
-    Add to existing Playwright tests.
+  <Card title="Playwright-BDD" icon="plug" href="/integrations/playwright-bdd">
+    Gherkin feature files with AI steps.
   </Card>
   <Card title="API Reference" icon="code" href="/api/run-agent">
-    Full runAgent() documentation.
+    Full `runAgent()` and `claudeCode()` documentation.
   </Card>
   <Card title="Examples" icon="folder-open" href="/examples">
     Browse example projects.

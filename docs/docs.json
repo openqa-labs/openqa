@@ -35,7 +35,7 @@
                 "group": "API Reference",
                 "pages": [
                     "api/run-agent",
-                    "api/bdd-exports"
+                    "api/step-definitions"
                 ]
             },
             {
@@ -56,7 +56,7 @@
         "links": [
             {
                 "label": "GitHub",
-                "href": "https://github.com/auto-browse/openqa"
+                "href": "https://github.com/openqa-labs/openqa"
             },
             {
                 "label": "npm",
@@ -65,12 +65,12 @@
         ],
         "primary": {
             "type": "github",
-            "href": "https://github.com/auto-browse/openqa"
+            "href": "https://github.com/openqa-labs/openqa"
         }
     },
     "footer": {
         "socials": {
-            "github": "https://github.com/auto-browse/openqa"
+            "github": "https://github.com/openqa-labs/openqa"
         }
     },
     "contextual": {

@@ -1,0 +1,85 @@
+---
+title: "Step Definitions"
+description: "How to wire AI steps in Playwright-BDD and Cucumber.js"
+---
+
+# Step Definitions
+
+OpenQA's agent harness connects to your BDD framework through a single catch-all step definition that handles all Gherkin steps with natural language.
+
+## Playwright-BDD
+
+### `fixtures.ts`
+
+```typescript
+import { test as base, createBdd } from 'playwright-bdd';
+
+export const test = base.extend({});
+
+// Export aistep — a catch-all step definition type
+export const { Step: aistep } = createBdd(test);
+```
+
+### `steps.ts`
+
+```typescript
+import { runAgent, claudeCode } from 'openqa';
+import { aistep } from './fixtures';
+
+// This single definition handles ALL Gherkin steps
+aistep(/^(.*)$/, async ({ page }, action: string) => {
+  await runAgent(claudeCode('claude-haiku-4-5'), action, page, { verbose: true });
+});
+```
+
+The `/^(.*)$/` regex matches any step text — `Given`, `When`, `Then`, `*`, or any keyword.
+
+## Cucumber.js
+
+```javascript
+// steps/steps.js
+import { Before, After, defineStep, setDefaultTimeout } from '@cucumber/cucumber';
+import { chromium } from '@playwright/test';
+import { runAgent, claudeCode } from 'openqa';
+
+setDefaultTimeout(240000);
+
+let browser, context, page;
+
+Before(async () => {
+  browser = await chromium.launch({ headless: process.env.HEADLESS !== 'false' });
+  context = await browser.newContext();
+  page = await context.newPage();
+});
+
+After(async () => {
+  await page.close();
+  await context.close();
+  await browser.close();
+});
+
+// Single definition handles ALL steps
+defineStep(/^(.*)$/, async function (action) {
+  await runAgent(claudeCode('claude-haiku-4-5'), action, context, { verbose: true });
+});
+```
+
+## Choosing a Model
+
+Pass a different model to `claudeCode()` to balance speed and capability:
+
+```typescript
+claudeCode('claude-haiku-4-5')   // Fast, default
+claudeCode('claude-sonnet-4-6')  // Balanced
+claudeCode('claude-opus-4-7')    // Most capable
+```
+
+## Session Resumption
+
+Within a single test scenario, `runAgent` automatically resumes the same Claude Code conversation session. This gives Claude context about earlier steps without repeating navigation or setup.
+
+To force a fresh session:
+
+```typescript
+runAgent.resetSession(context);
+```

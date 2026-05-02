@@ -1,72 +1,80 @@
 ---
 title: "Quickstart"
-description: "Get running in 2 minutes with npx openqa init"
+description: "Scaffold an agent harness into your existing project in 2 minutes"
 ---
 
 # Quickstart
 
-## New Project
+OpenQA scaffolds a `.openqa/` **agent harness** directory inside your existing project. Your feature files live where they always have — the harness wires Claude Code to your Playwright browser.
 
 <Steps>
-  <Step title="Initialize">
+  <Step title="Run the init wizard">
     ```bash
     npx openqa init
     ```
-    This will prompt you to select a framework and configure your AI provider.
+    The interactive wizard will ask you a few questions.
   </Step>
-  <Step title="Choose Framework">
-    Select from:
-    - **YAML** — Simplest format for test cases
-    - **Playwright-BDD** — Gherkin syntax with Playwright
-    - **Cucumber.js** — Standard Cucumber with AI steps
+  <Step title="Choose your agent & model">
+    Select **Claude Code** as the agent, then pick a model:
+    - `claude-haiku-4-5` — fast, cost-efficient (default)
+    - `claude-sonnet-4-6` — balanced
+    - `claude-opus-4-7` — most capable
+    - Custom model name
   </Step>
-  <Step title="Configure AI Provider">
-    Choose your authentication method:
-    
+  <Step title="Choose your framework">
+    - **Playwright-BDD** — Gherkin `.feature` files with Playwright test runner
+    - **Cucumber.js** — Standard Cucumber with Playwright browser
+  </Step>
+  <Step title="Set the path to your feature files">
+    Enter the relative path from your project root to your `.feature` files (e.g. `features/` or `tests/features/`). The harness will be configured to point at them automatically.
+  </Step>
+  <Step title="Authenticate">
     <Tabs>
-      <Tab title="Claude CLI (Recommended)">
+      <Tab title="Claude CLI (Recommended — no API key needed)">
         ```bash
         claude login
         ```
       </Tab>
       <Tab title="API Key">
         ```bash
-        export ANTHROPIC_API_KEY=your_key
+        # Add to .openqa/.env
+        ANTHROPIC_API_KEY=your_key
         ```
       </Tab>
-      <Tab title=".env File">
+      <Tab title="OAuth Token (CI)">
         ```bash
-        echo "ANTHROPIC_API_KEY=your_key" > .env
+        CLAUDE_CODE_OAUTH_TOKEN=your_token
         ```
       </Tab>
     </Tabs>
   </Step>
-  <Step title="Write Your First Test">
-    ```yaml
-    name: My First Test
-    tests:
-      - name: Add todo item
-        steps:
-          - Navigate to "https://demo.playwright.dev/todomvc/"
-          - Add a new todo item "Buy groceries"
-          - Verify the todo appears in the list
+  <Step title="Write your feature file">
+    Use the `*` (asterisk) syntax for a natural, AI-friendly style:
+
+    ```gherkin
+    Feature: TodoMVC
+
+      Scenario: Add todo item
+        * I navigate to "https://demo.playwright.dev/todomvc/"
+        * I add a new todo item "Buy groceries"
+        * I should see "Buy groceries" in the todo list
     ```
+
+    Standard `Given`/`When`/`Then` also works.
   </Step>
   <Step title="Run">
     ```bash
-    npm test
+    cd .openqa
+    npm run test:headed
     ```
   </Step>
 </Steps>
 
 ## Existing Project?
 
-Choose your integration:
+If you already have feature files, just run `npx openqa init` from your project root, point it at your existing `features/` directory, and the harness will be scaffolded around them.
 
 <CardGroup cols={2}>
-  <Card title="Playwright" icon="plug" href="/integrations/playwright">
-    Standard Playwright tests
-  </Card>
   <Card title="Playwright-BDD" icon="cucumber" href="/integrations/playwright-bdd">
     Gherkin feature files
   </Card>
@@ -75,5 +83,8 @@ Choose your integration:
   </Card>
   <Card title="YAML" icon="file-code" href="/integrations/yaml">
     Simple YAML test format
+  </Card>
+  <Card title="Playwright" icon="plug" href="/integrations/playwright">
+    Standard Playwright tests
   </Card>
 </CardGroup>

@@ -1,101 +1,123 @@
 ---
 title: "Playwright-BDD"
-description: "One-line integration for Gherkin feature files"
+description: "Use OpenQA as an agent harness for Gherkin feature files"
 ---
 
 # Playwright-BDD Integration
 
-Replace all step definitions with AI-powered automation.
+Use OpenQA as the **agent harness** for your Playwright-BDD project. Write feature files in plain English — the harness connects Claude Code to your Playwright browser and executes every step automatically.
 
-## Installation
+## Recommended: Use `npx openqa init`
+
+The easiest way to get started is the interactive wizard, which scaffolds a complete `.openqa/` harness into your existing project:
 
 ```bash
-npm install openqa
+npx openqa init
+# Select: Playwright-BDD
+# Enter the path to your feature files
 ```
 
-## Setup
+This creates:
+- `.openqa/playwright.config.ts` — pre-configured for your feature file path
+- `.openqa/steps/fixtures.ts` — Playwright-BDD fixture extension
+- `.openqa/steps/steps.ts` — a single AI step definition wired to the harness
 
-Replace your step definitions file with a single import:
+## Manual Setup
+
+If you prefer to set up manually:
+
+### Install
+
+```bash
+npm install openqa playwright-bdd @playwright/test
+```
+
+### Create `fixtures.ts`
 
 ```typescript
-// features/steps/steps.ts
-import 'openqa/bdd/playwright-bdd';
+// steps/fixtures.ts
+import { test as base, createBdd } from 'playwright-bdd';
 
-// That's it. All Gherkin steps are now handled by AI.
+export const test = base.extend({});
+export const { Step: aistep } = createBdd(test);
+```
+
+### Create `steps.ts`
+
+```typescript
+// steps/steps.ts
+import { runAgent, claudeCode } from 'openqa';
+import { aistep } from './fixtures';
+
+aistep(/^(.*)$/, async ({ page }, action: string) => {
+  await runAgent(claudeCode('claude-haiku-4-5'), action, page, { verbose: true });
+});
+```
+
+### Configure `playwright.config.ts`
+
+```typescript
+import { defineConfig } from '@playwright/test';
+import { defineBddConfig } from 'playwright-bdd';
+
+const testDir = defineBddConfig({
+  featuresRoot: '../features',       // root of your features directory
+  features: '../features/**/*.feature',
+  steps: 'steps/*.ts',
+});
+
+export default defineConfig({
+  testDir,
+  timeout: 240000,
+  use: { headless: true },
+});
 ```
 
 ## Write Feature Files
 
+Use `*` (asterisk) for a natural, AI-friendly step syntax:
+
 ```gherkin
-Feature: TodoMVC
+Feature: TodoMVC Automation
 
   Scenario: Add todo item
-    Given I navigate to "https://demo.playwright.dev/todomvc/"
-    When I add a new todo item "Buy groceries"
-    Then I should see "Buy groceries" in the todo list
+    * I navigate to "https://demo.playwright.dev/todomvc/"
+    * I add a new todo item "Buy groceries"
+    * I should see "Buy groceries" in the todo list
 
   Scenario: Filter todos
-    Given I navigate to "https://demo.playwright.dev/todomvc/"
-    When I add three todo items: "Task 1", "Task 2", and "Task 3"
-    And I mark the first todo as completed
-    And I click the Active filter
-    Then I should see 2 active todos
+    * I navigate to "https://demo.playwright.dev/todomvc/"
+    * I add three todo items: "Task 1", "Task 2", and "Task 3"
+    * I mark the first todo as completed
+    * I click the Active filter
+    * I should see 2 active todos
 ```
+
+Standard `Given`/`When`/`Then` also works identically.
 
 ## Run Tests
 
 ```bash
-npm test
-```
-
-## Custom Configuration
-
-Use `createAIStep()` for custom options:
-
-```typescript
-import { createAIStep } from 'openqa/bdd/playwright-bdd';
-
-createAIStep({
-  verbose: false,
-  agentType: 'langchain',
-  provider: 'openai'
-});
-```
-
-## Manual Usage
-
-For more control, use the BDD helpers directly:
-
-```typescript
-import { test, Given, When, Then } from 'openqa/bdd/playwright-bdd';
-import { runAgent } from 'openqa';
-
-export { test };
-
-// Custom step with manual agent call
-When('I do something special', async ({ context }) => {
-  await runAgent('Do the special thing', context, { verbose: true });
-});
+npm run bddgen && playwright test --headed
 ```
 
 ## Authentication
 
 <Tabs>
-  <Tab title="Claude CLI">
+  <Tab title="Claude CLI (no API key needed)">
     ```bash
     claude login
     ```
   </Tab>
   <Tab title="API Key">
     ```bash
-    export ANTHROPIC_API_KEY=your_key
+    # .openqa/.env
+    ANTHROPIC_API_KEY=your_key
     ```
   </Tab>
-  <Tab title="OpenAI / Google">
+  <Tab title="CI / OAuth Token">
     ```bash
-    AGENT_TYPE=langchain
-    DEFAULT_PROVIDER=openai
-    OPENAI_API_KEY=your_key
+    CLAUDE_CODE_OAUTH_TOKEN=your_token
     ```
   </Tab>
 </Tabs>

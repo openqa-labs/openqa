@@ -1,24 +1,30 @@
 ---
 title: "runAgent()"
-description: "Core function to execute AI browser automation"
+description: "Core function to execute an AI browser automation step"
 ---
 
 # runAgent()
 
-Execute an AI agent with a natural language instruction.
+Execute an AI agent with a natural language instruction. This is the primary interface of the OpenQA agent harness.
 
 ## Signature
 
 ```typescript
-runAgent(prompt: string, context: BrowserContext, options?: RunAgentOptions): Promise<string>
+runAgent(
+  provider: ProviderConfig,
+  prompt: string,
+  pageOrContext: Page | BrowserContext,
+  options?: RunAgentOptions
+): Promise<string>
 ```
 
 ## Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
+| `provider` | `ProviderConfig` | Yes | Agent provider, created with `claudeCode()` |
 | `prompt` | `string` | Yes | Natural language instruction |
-| `context` | `BrowserContext` | Yes | Playwright browser context |
+| `pageOrContext` | `Page \| BrowserContext` | Yes | Playwright page or browser context |
 | `options` | `object` | No | Configuration options |
 
 ## Options
@@ -26,78 +32,74 @@ runAgent(prompt: string, context: BrowserContext, options?: RunAgentOptions): Pr
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `verbose` | `boolean` | `true` | Enable console logging |
-| `agentType` | `string` | `'claude'` | Agent backend: `'claude'` or `'langchain'` |
-| `provider` | `string` | `'anthropic'` | LLM provider: `'anthropic'`, `'openai'`, `'google'` |
-| `model` | `string` | - | Override default model name |
-| `recursionLimit` | `number` | `100` | Max agent recursion depth |
-| `returnUsage` | `boolean` | `false` | Return usage statistics |
-| `modelConfig` | `object` | - | Additional model configuration |
+| `returnUsage` | `boolean` | `false` | Return token usage statistics |
 
 ## Returns
 
-- **Default**: `Promise<string>` — Final agent response
-- **With `returnUsage: true`**: `Promise<{ result: string, usage: object }>` — Response with token usage
+- **Default**: `Promise<string>` — Final agent response text
+- **With `returnUsage: true`**: `Promise<{ result: string, usage: object, steps: number, sessionId: string }>` 
 
 ## Examples
 
 ### Basic Usage
 
 ```typescript
-import { runAgent } from "openqa";
+import { test } from "@playwright/test";
+import { runAgent, claudeCode } from "openqa";
 
-test("example", async ({ context }) => {
-  const result = await runAgent("Click the login button", context);
+test("AI fills form", async ({ page }) => {
+  await page.goto("https://example.com");
+  await runAgent(claudeCode('claude-haiku-4-5'), "Fill in the contact form with test data", page);
 });
 ```
 
-### With Options
+### In a BDD Step Definition
 
 ```typescript
-await runAgent("Fill the form", context, {
-  verbose: false,
-  agentType: "langchain",
-  provider: "openai",
-  model: "gpt-4o"
+import { runAgent, claudeCode } from 'openqa';
+import { aistep } from './fixtures';
+
+aistep(/^(.*)$/, async ({ page }, action: string) => {
+  await runAgent(claudeCode('claude-haiku-4-5'), action, page, { verbose: true });
 });
 ```
 
-### Using Different Agents
+### With Token Usage
 
-<Tabs>
-  <Tab title="Claude (Default)">
-    ```typescript
-    await runAgent("Click submit", context);
-    // Uses Claude Agent SDK
-    ```
-  </Tab>
-  <Tab title="LangChain">
-    ```typescript
-    await runAgent("Click submit", context, {
-      agentType: "langchain",
-      provider: "openai" // or 'anthropic', 'google'
-    });
-    ```
-  </Tab>
-</Tabs>
+```typescript
+const result = await runAgent(
+  claudeCode('claude-sonnet-4-6'),
+  "Complete the checkout flow",
+  page,
+  { returnUsage: true }
+);
+console.log(result.usage);
+```
+
+## claudeCode()
+
+Creates a Claude Code provider configuration for use with `runAgent`.
+
+```typescript
+import { claudeCode } from 'openqa';
+
+const provider = claudeCode('claude-haiku-4-5');  // default model
+const provider = claudeCode('claude-sonnet-4-6');
+const provider = claudeCode('claude-opus-4-7');
+```
+
+| Model | Description |
+|-------|-------------|
+| `claude-haiku-4-5` | Fast, cost-efficient (default) |
+| `claude-sonnet-4-6` | Balanced performance |
+| `claude-opus-4-7` | Most capable |
 
 ## Session Management
 
-Reset agent session for a browser context:
+The harness maintains a per-`BrowserContext` Claude Code conversation session. Across multiple `runAgent()` calls within the same Playwright test, Claude resumes its conversation, giving it context about earlier steps.
+
+Reset the session manually if needed:
 
 ```typescript
-await runAgent.resetSession(context);
-```
-
-## Direct Agent Access
-
-Import individual agents directly:
-
-```typescript
-import { runClaudeAgent, runLangChainAgent } from "openqa";
-
-// Use Claude Agent SDK directly
-await runClaudeAgent(prompt, context, options);
-
-// Use LangChain agent directly
-await runLangChainAgent(prompt, context, options);
+runAgent.resetSession(context);
 ```
