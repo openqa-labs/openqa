@@ -1,10 +1,8 @@
-/**
- * OpenQA Step Definitions
- *
- * This single export replaces all manual step definitions!
- * The AI agent will handle all Given/When/Then steps automatically.
- */
+import { runAgent, claudeCode } from 'openqa';
+import { aistep } from './fixtures';
 
-export { test } from 'openqa/bdd/playwright-bdd';
-
-// That's it! Write your .feature files and let AI do the rest.
+// Generic AI step - handles ALL Given/When/Then steps with natural language
+aistep(/^(.*)$/, async ({ page, context }, action: string) => {
+    console.log(`Executing AI step: ${action}`);
+    await runAgent(claudeCode('claude-haiku-4-5'), action, page, { verbose: true });
+});

@@ -61,3 +61,4 @@ examples/playwright-bdd-remote/
 .mcp.json
 .claudesdk/
 .steeldevdocs/
+.openqa/

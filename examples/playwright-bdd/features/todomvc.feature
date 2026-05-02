@@ -1,15 +1,15 @@
 Feature: TodoMVC Automation
 
   Scenario: Add todo item (intentionally failing)
-    Given I navigate to "https://demo.playwright.dev/todomvc/"
-    When I add a new todo item "Buy groceries" on the web page
-    Then I should see "Buy fruits" in the todo list
-    When I add a new todo item "Buy veggies" on the web page
-    Then I should see "Buy Bananas" in the todo list
+    * I navigate to "https://demo.playwright.dev/todomvc/"
+    * I add a new todo item "Buy groceries" on the web page
+    * I should see "Buy fruits" in the todo list
+    * I add a new todo item "Buy veggies" on the web page
+    * I should see "Buy Bananas" in the todo list
 
   Scenario: Filter todos
-    Given I navigate to "https://demo.playwright.dev/todomvc/"
-    When I add three todo items: "Task 1", "Task 2", and "Task 3" on the web page
-    And I mark the first todo as completed
-    And I click the Active filter to show only active todos on the web page
-    Then I should see 2 active todos
+    * I navigate to "https://demo.playwright.dev/todomvc/"
+    * I add three todo items: "Task 1", "Task 2", and "Task 3" on the web page
+    * I mark the first todo as completed
+    * I click the Active filter to show only active todos on the web page
+    * I should see 2 active todos
