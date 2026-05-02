@@ -7,10 +7,7 @@
     "openqa": "./src/cli/bin.js"
   },
   "exports": {
-    ".": "./src/index.js",
-    "./bdd": "./src/bdd/index.js",
-    "./bdd/playwright-bdd": "./src/bdd/playwright-bdd.js",
-    "./bdd/cucumber": "./src/bdd/cucumber.js"
+    ".": "./src/index.js"
   },
   "keywords": [
     "claude",
