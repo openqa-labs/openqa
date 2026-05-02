@@ -101,23 +101,4 @@ Standard `Given`/`When`/`Then` also works identically.
 npm run bddgen && playwright test --headed
 ```
 
-## Authentication
-
-<Tabs>
-  <Tab title="Claude CLI (no API key needed)">
-    ```bash
-    claude login
-    ```
-  </Tab>
-  <Tab title="API Key">
-    ```bash
-    # .openqa/.env
-    ANTHROPIC_API_KEY=your_key
-    ```
-  </Tab>
-  <Tab title="CI / OAuth Token">
-    ```bash
-    CLAUDE_CODE_OAUTH_TOKEN=your_token
-    ```
-  </Tab>
-</Tabs>
+See the [Quickstart](/quickstart) for authentication setup.

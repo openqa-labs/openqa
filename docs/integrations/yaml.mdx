@@ -1,30 +1,34 @@
 ---
 title: "YAML Tests"
-description: "Write tests in simple YAML format"
+description: "Write browser tests in a simple YAML format — no code required"
 ---
 
-# YAML Test Format
+# YAML Tests
 
-The simplest way to write browser tests.
+The simplest way to define browser tests — just a list of natural language steps.
+
+## Setup
+
+```bash
+npx openqa init
+# Select: YAML
+```
 
 ## Example
 
 ```yaml
 name: TodoMVC Tests
-url: https://demo.playwright.dev/todomvc/
 
 tests:
   - name: Add todo item
-    tags: [smoke]
     steps:
-      - Navigate to the TodoMVC home page
+      - Navigate to "https://demo.playwright.dev/todomvc/"
       - Add a new todo item "Buy groceries"
       - Verify "Buy groceries" appears in the todo list
 
   - name: Complete and filter todos
-    tags: [smoke, regression]
     steps:
-      - Navigate to the TodoMVC home page
+      - Navigate to "https://demo.playwright.dev/todomvc/"
       - Add three todo items "Task 1", "Task 2", and "Task 3"
       - Mark the first todo as completed
       - Click the Active filter
@@ -36,27 +40,20 @@ tests:
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | Yes | Test suite name |
-| `url` | No | Base URL for all tests |
 | `tests` | Yes | Array of test cases |
 | `tests[].name` | Yes | Individual test name |
-| `tests[].tags` | No | Tags for filtering |
 | `tests[].steps` | Yes | Natural language steps |
 
-## Running
+## Run Tests
 
 ```bash
+cd .openqa
 npm test
 ```
 
-Filter by tag:
+## Writing Good Steps
 
-```bash
-npm test -- --grep @smoke
-```
-
-## Writing Steps
-
-Steps are natural language instructions. Be specific:
+Be specific — the more detail you give, the better the agent performs:
 
 <Tabs>
   <Tab title="Good">
@@ -76,8 +73,4 @@ Steps are natural language instructions. Be specific:
   </Tab>
 </Tabs>
 
-## Tips
-
-- Include URLs in navigation steps
-- Use quotes for specific text values
-- Be explicit about what to verify
+See the [Quickstart](/quickstart) for authentication setup.
