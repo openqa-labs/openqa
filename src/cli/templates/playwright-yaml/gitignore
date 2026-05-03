@@ -4,13 +4,20 @@ node_modules/
 # Environment variables
 .env
 
-# Generated test files (YAML is source of truth)
+# Playwright Test artifacts
+test-results/
+playwright-report/
+playwright/.cache/
+.playwright/
+
+# Playwright YAML generated files
 .tests-gen/
 
-# Playwright test results
-playwright-report/
-test-results/
-.playwright/
+# OpenQA & BDD generated files
+.playwright-mcp/
+.features-gen/
+cucumber-report/
+cucumber-test-results/
 
 # OS files
 .DS_Store

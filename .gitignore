@@ -62,3 +62,5 @@ examples/playwright-bdd-remote/
 .claudesdk/
 .steeldevdocs/
 .openqa/
+.playwright-mcp/
+conductor/
