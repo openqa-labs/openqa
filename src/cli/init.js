@@ -14,6 +14,36 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+const CLAUDE_HOOKS_SETTINGS = {
+  hooks: {
+    PostToolUseFailure: [
+      {
+        matcher: 'browser_verify_',
+        hooks: [
+          {
+            type: 'prompt',
+            prompt: 'A Playwright assertion tool just failed. Hook input:\n$ARGUMENTS\n\nThis is a definitive test failure — the browser verification confirmed the expected condition was NOT met.\n\nReturn this JSON:\n{"decision": "block", "reason": "Assertion failed", "hookSpecificOutput": {"hookEventName": "PostToolUseFailure", "additionalContext": "ASSERTION FAILED. Do NOT call any more browser tools. Write a clear 1-2 sentence failure summary explaining what was expected vs what was actually found on the page, then stop."}}',
+            model: 'claude-haiku-4-5',
+            timeout: 30,
+          },
+        ],
+      },
+    ],
+    Stop: [
+      {
+        hooks: [
+          {
+            type: 'prompt',
+            prompt: 'You are validating a Playwright test agent\'s final output. Hook context:\n$ARGUMENTS\n\nCheck the tool_calls array. If none of them are browser_verify_* tools, return {"ok": true} immediately — no assertion was involved.\n\nIf there were browser_verify_* tool calls, inspect the output field. Does it contain a clear failure summary stating what was expected and what was actually found on the page? If yes: {"ok": true}. If the output is absent or too vague: {"ok": false, "reason": "Please write a clear 1-2 sentence failure summary: what the test expected to see, and what was actually on the page."}',
+            model: 'claude-haiku-4-5',
+            timeout: 30,
+          },
+        ],
+      },
+    ],
+  },
+};
+
 // Read CLI's own package.json to detect version
 const cliPackageJson = JSON.parse(
   readFileSync(join(__dirname, '../../package.json'), 'utf-8')
@@ -119,6 +149,12 @@ export async function init(cliFramework, options) {
   const templateDir = join(__dirname, 'templates', framework);
 
   try {
+    // Write Claude Code hooks settings — enables PostToolUseFailure and Stop hooks
+    // that replace the hard-coded kill logic and provide meaningful failure reports
+    const claudeDir = join(targetDir, '.claude');
+    mkdirSync(claudeDir, { recursive: true });
+    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify(CLAUDE_HOOKS_SETTINGS, null, 2));
+
     const toCopy = ['gitignore', 'package.json', 'README.md', '.env.example'];
     
     if (framework === 'playwright-bdd') {
