@@ -162,7 +162,7 @@ socket.on('error', () => process.exit(1));
                                 if (this.verbose) this.logger.log(`🔧 Tool Call: ${event.name}(${event.args})`);
                             } else if (event.type === 'tool_error') {
                                 if (this.verbose) this.logger.log(`❌ Tool Error: ${event.error}`);
-                                if (lastToolName.startsWith('browser_verify_')) {
+                                if (lastToolName.includes('browser_verify_')) {
                                     // Assertion tool failed → definitive test failure
                                     const err = new Error(`Assertion failed: ${event.error}`);
                                     child.kill();

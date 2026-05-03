@@ -67,8 +67,8 @@ const parseStreamJsonLine = (line) => {
                   ? block.content.map(c => c.text || JSON.stringify(c)).join('\\n')
                   : 'Unknown tool error';
           
-          // Clean up the ### Result prefix if present
-          errorText = errorText.replace(/^### Result\\n/, '').trim();
+          // Clean up section headers (### Error, ### Result) that MCP prepends
+          errorText = errorText.replace(/^### (?:Error|Result)\\n/, '').trim();
           
           events.push({ 
             type: "tool_error", 
