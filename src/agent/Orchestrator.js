@@ -180,7 +180,6 @@ socket.on('error', () => process.exit(1));
             let stepCount = 0;
             const fullOutput = [];
             let currentSessionId = existingSessionId;
-            let lastToolName = '';
             let assertionFailed = false;
             let assertionError = '';
 
@@ -222,11 +221,10 @@ socket.on('error', () => process.exit(1));
                                 if (this.verbose) this.logger.log(`💬 Assistant: ${event.text}`);
                             } else if (event.type === 'tool_call') {
                                 stepCount++;
-                                lastToolName = event.name || '';
                                 if (this.verbose) this.logger.log(`🔧 Tool Call: ${event.name}(${event.args})`);
                             } else if (event.type === 'tool_error') {
                                 if (this.verbose) this.logger.log(`❌ Tool Error: ${event.error}`);
-                                if (lastToolName.includes('browser_verify_')) {
+                                if (event.toolName?.includes('browser_verify_')) {
                                     // Assertion tool failed — flag it but do NOT kill the subprocess.
                                     // The PostToolUseFailure hook blocks further tool calls and instructs
                                     // Claude to write a failure summary before stopping gracefully.
