@@ -46,5 +46,5 @@ Browser setup and teardown is handled automatically.
 
 ## Learn More
 
-- [OpenQA Documentation](https://www.auto-browse.com/)
+- [OpenQA Documentation](https://openqa.io/)
 - [Cucumber.js Documentation](https://github.com/cucumber/cucumber-js)

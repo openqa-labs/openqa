@@ -183,9 +183,9 @@ Resets the Claude Code conversation session for a specific browser context. Usef
 
 ## Links
 
-- **Website:** https://www.auto-browse.com/
+- **Website:** https://openqa.io/
 - **NPM:** https://www.npmjs.com/package/openqa
-- **GitHub:** https://github.com/auto-browse/openqa
+- **GitHub:** https://github.com/openqa-labs/openqa
 
 ## License
 

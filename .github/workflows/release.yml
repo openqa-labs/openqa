@@ -45,6 +45,6 @@ jobs:
             https://www.npmjs.com/package/openqa/v/${{ steps.package_version.outputs.version }}
 
             ### Documentation
-            See [README.md](https://github.com/auto-browse/openqa#readme) for usage instructions.
+            See [README.md](https://github.com/openqa-labs/openqa#readme) for usage instructions.
           draft: false
           prerelease: false

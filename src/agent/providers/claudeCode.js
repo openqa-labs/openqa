@@ -21,7 +21,7 @@ const extractErrorMessage = (obj) => {
   return undefined;
 };
 
-const parseStreamJsonLine = (line) => {
+const parseStreamJsonLine = (line, toolNameById) => {
   if (!line.startsWith("{")) return [];
   try {
     const obj = JSON.parse(line);
@@ -40,11 +40,11 @@ const parseStreamJsonLine = (line) => {
             events.push({ type: "text", text: texts.join("") });
             texts.length = 0;
           }
-          
-          // In Sandcastle they only exposed certain tools. 
-          // For Playwright MCP, we log the tool and its stringified args.
+
+          // Buffer id→name so tool_error events can carry the tool name
+          if (block.id) toolNameById.set(block.id, block.name);
+
           const argsString = typeof block.input === 'object' ? JSON.stringify(block.input) : block.input;
-          
           events.push({
             type: "tool_call",
             name: block.name,
@@ -66,14 +66,15 @@ const parseStreamJsonLine = (line) => {
               : Array.isArray(block.content)
                   ? block.content.map(c => c.text || JSON.stringify(c)).join('\\n')
                   : 'Unknown tool error';
-          
+
           // Clean up section headers (### Error, ### Result) that MCP prepends
           errorText = errorText.replace(/^### (?:Error|Result)\\n/, '').trim();
-          
-          events.push({ 
-            type: "tool_error", 
-            error: errorText, 
-            toolId: block.tool_use_id 
+
+          events.push({
+            type: "tool_error",
+            toolName: toolNameById.get(block.tool_use_id) || '',
+            error: errorText,
+            toolId: block.tool_use_id,
           });
         }
       }
@@ -95,53 +96,57 @@ const parseStreamJsonLine = (line) => {
   return [];
 };
 
-export const claudeCode = (model = "claude-haiku-4-5", options = {}) => ({
-  name: "claude-code",
-  env: options.env ?? {},
-  captureSessions: options.captureSessions ?? true,
+export const claudeCode = (model = "claude-haiku-4-5", options = {}) => {
+  const toolNameById = new Map();
 
-  buildPrintCommand({ prompt, mcpConfigPath, dangerouslySkipPermissions, resumeSession }) {
-    const skipPerms = dangerouslySkipPermissions
-      ? " --dangerously-skip-permissions"
-      : "";
-    const mcpFlag = mcpConfigPath ? ` --mcp-config ${shellEscape(mcpConfigPath)} --strict-mcp-config` : "";
-    const resumeFlag = resumeSession ? ` --resume ${shellEscape(resumeSession)}` : "";
-    return {
-      command: `npx @anthropic-ai/claude-code --print --verbose${skipPerms}${mcpFlag} --output-format stream-json --model ${shellEscape(model)}${resumeFlag} -p -`,
-      stdin: prompt,
-    };
-  },
+  return {
+    name: "claude-code",
+    env: options.env ?? {},
+    captureSessions: options.captureSessions ?? true,
 
-  parseStreamLine(line) {
-    return parseStreamJsonLine(line);
-  },
+    buildPrintCommand({ prompt, mcpConfigPath, dangerouslySkipPermissions, resumeSession }) {
+      const skipPerms = dangerouslySkipPermissions
+        ? " --dangerously-skip-permissions"
+        : "";
+      const mcpFlag = mcpConfigPath ? ` --mcp-config ${shellEscape(mcpConfigPath)} --strict-mcp-config` : "";
+      const resumeFlag = resumeSession ? ` --resume ${shellEscape(resumeSession)}` : "";
+      return {
+        command: `npx @anthropic-ai/claude-code --print --verbose${skipPerms}${mcpFlag} --output-format stream-json --model ${shellEscape(model)}${resumeFlag} -p -`,
+        stdin: prompt,
+      };
+    },
 
-  parseSessionUsage(content) {
-    const lines = content.split("\n");
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i];
-      if (!line) continue;
-      if (!line.startsWith("{")) continue;
-      try {
-        const obj = JSON.parse(line);
-        if (obj.type === "assistant" && obj.message?.usage) {
-          const u = obj.message.usage;
-          if (
-            typeof u.input_tokens === "number" &&
-            typeof u.output_tokens === "number"
-          ) {
-            return {
-              inputTokens: u.input_tokens,
-              cacheCreationInputTokens: u.cache_creation_input_tokens || 0,
-              cacheReadInputTokens: u.cache_read_input_tokens || 0,
-              outputTokens: u.output_tokens,
-            };
+    parseStreamLine(line) {
+      return parseStreamJsonLine(line, toolNameById);
+    },
+
+    parseSessionUsage(content) {
+      const lines = content.split("\n");
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i];
+        if (!line) continue;
+        if (!line.startsWith("{")) continue;
+        try {
+          const obj = JSON.parse(line);
+          if (obj.type === "assistant" && obj.message?.usage) {
+            const u = obj.message.usage;
+            if (
+              typeof u.input_tokens === "number" &&
+              typeof u.output_tokens === "number"
+            ) {
+              return {
+                inputTokens: u.input_tokens,
+                cacheCreationInputTokens: u.cache_creation_input_tokens || 0,
+                cacheReadInputTokens: u.cache_read_input_tokens || 0,
+                outputTokens: u.output_tokens,
+              };
+            }
           }
+        } catch {
+          // Not valid JSON — skip
         }
-      } catch {
-        // Not valid JSON — skip
       }
-    }
-    return undefined;
-  },
-});
+      return undefined;
+    },
+  };
+};

@@ -47,5 +47,5 @@ The AI agent automatically handles all steps - no code required!
 
 ## Learn More
 
-- [OpenQA Documentation](https://www.auto-browse.com/)
+- [OpenQA Documentation](https://openqa.io/)
 - [Playwright-BDD Documentation](https://vitalets.github.io/playwright-bdd/)
