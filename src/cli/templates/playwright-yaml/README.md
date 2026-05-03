@@ -113,5 +113,5 @@ cp .env.example .env
 
 ## Learn More
 
-- [OpenQA Documentation](https://github.com/auto-browse/openqa)
+- [OpenQA Documentation](https://openqa.io/)
 - [Playwright Documentation](https://playwright.dev)

@@ -1,6 +1,6 @@
 {
   "name": "openqa",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Agent Harness for Browser Test Automation — write tests in natural language, powered by Claude Code",
   "type": "module",
   "bin": {
