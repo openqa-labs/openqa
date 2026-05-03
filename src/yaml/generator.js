@@ -41,7 +41,7 @@ export function generateTest(yamlContent, sourceFile = 'test.yaml', yamlFilePath
     // Default: use @playwright/test
     code += `import { test } from '@playwright/test';\n`;
   }
-  code += `import { runAgent } from 'openqa';\n\n`;
+  code += `import { runAgent, claudeCode } from 'openqa';\n\n`;
 
   // Start describe block
   code += `test.describe('${spec.name}', () => {\n`;
@@ -83,7 +83,7 @@ function generateHook(hookType, steps) {
 
   for (const step of steps) {
     code += `    await test.step('${escapeString(step)}', async () => {\n`;
-    code += `      await runAgent('${escapeString(step)}', page, { verbose: true });\n`;
+    code += `      await runAgent(claudeCode('claude-haiku-4-5'), '${escapeString(step)}', page, { verbose: true });\n`;
     code += `    });\n`;
   }
 
@@ -110,7 +110,7 @@ function generateFixtures(fixtures) {
       code += `  test.beforeEach(async ({ page, context }) => {\n`;
       for (const step of definition.setup) {
         code += `    await test.step('[Fixture ${name}] ${escapeString(step)}', async () => {\n`;
-        code += `      await runAgent('${escapeString(step)}', page, { verbose: true });\n`;
+        code += `      await runAgent(claudeCode('claude-haiku-4-5'), '${escapeString(step)}', page, { verbose: true });\n`;
         code += `    });\n`;
       }
       code += `  });\n\n`;
@@ -151,7 +151,7 @@ function generateTestCase(testDef) {
   // Generate steps
   for (const step of testDef.steps) {
     code += `    await test.step('${escapeString(step)}', async () => {\n`;
-    code += `      await runAgent('${escapeString(step)}', page, { verbose: true });\n`;
+    code += `      await runAgent(claudeCode('claude-haiku-4-5'), '${escapeString(step)}', page, { verbose: true });\n`;
     code += `    });\n`;
   }
 
@@ -188,7 +188,7 @@ function generateDataDrivenTest(testDef) {
   for (const step of testDef.steps) {
     const interpolatedStep = step.replace(/\{\{(\w+)\}\}/g, '${data.$1}');
     code += `      await test.step(\`${interpolatedStep}\`, async () => {\n`;
-    code += `        await runAgent(\`${interpolatedStep}\`, page, { verbose: true });\n`;
+    code += `        await runAgent(claudeCode('claude-haiku-4-5'), \`${interpolatedStep}\`, page, { verbose: true });\n`;
     code += `      });\n`;
   }
 

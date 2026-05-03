@@ -1,79 +1,146 @@
 ---
 title: "Quickstart"
-description: "Get running in 2 minutes with npx openqa init"
+description: "Scaffold a browser test harness into your project in 2 minutes"
 ---
 
 # Quickstart
 
-## New Project
+Run this from your existing project root:
 
-<Steps>
-  <Step title="Initialize">
+```bash
+npx openqa init
+```
+
+The interactive wizard asks 4 questions — then everything is set up automatically.
+
+---
+
+## Step 1: Choose your agent
+
+Select **Claude Code**. This is the only supported agent today.
+
+---
+
+## Step 2: Choose your model
+
+| Model | Speed | Best for |
+|-------|-------|----------|
+| `claude-haiku-4-5` | Fast | Default, most tests |
+| `claude-sonnet-4-6` | Medium | Complex flows |
+| `claude-opus-4-7` | Slow | Most demanding tasks |
+
+Or enter any custom model name.
+
+---
+
+## Step 3: Choose your framework
+
+**Playwright-BDD** — Uses Gherkin `.feature` files with the Playwright test runner. Recommended.
+
+**Cucumber.js** — Standard Cucumber with Playwright browser automation.
+
+---
+
+## Step 4: Point to your feature files
+
+Enter the relative path from your project root to your `.feature` files. For example:
+
+- `features/` — default
+- `tests/features/`
+- `src/test/features/`
+
+The harness will be configured to point at them automatically, wherever they live.
+
+---
+
+## What gets created
+
+```
+your-project/
+└── .openqa/               ← agent harness lives here
+    ├── .env.example       ← copy to .env and fill in your API key
+    ├── playwright.config.ts  (or cucumber.js)
+    └── steps/
+        ├── fixtures.ts    ← Playwright-BDD only
+        └── steps.ts       ← single AI step definition
+```
+
+Your feature files **stay where they are**.
+
+---
+
+## Authentication
+
+```bash
+cp .openqa/.env.example .openqa/.env
+```
+
+Then add one of the following to `.openqa/.env`:
+
+<Tabs>
+  <Tab title="Claude CLI (no API key needed locally)">
     ```bash
-    npx openqa init
+    claude login  # one-time login — no .env needed for local use
     ```
-    This will prompt you to select a framework and configure your AI provider.
-  </Step>
-  <Step title="Choose Framework">
-    Select from:
-    - **YAML** — Simplest format for test cases
-    - **Playwright-BDD** — Gherkin syntax with Playwright
-    - **Cucumber.js** — Standard Cucumber with AI steps
-  </Step>
-  <Step title="Configure AI Provider">
-    Choose your authentication method:
-    
-    <Tabs>
-      <Tab title="Claude CLI (Recommended)">
-        ```bash
-        claude login
-        ```
-      </Tab>
-      <Tab title="API Key">
-        ```bash
-        export ANTHROPIC_API_KEY=your_key
-        ```
-      </Tab>
-      <Tab title=".env File">
-        ```bash
-        echo "ANTHROPIC_API_KEY=your_key" > .env
-        ```
-      </Tab>
-    </Tabs>
-  </Step>
-  <Step title="Write Your First Test">
-    ```yaml
-    name: My First Test
-    tests:
-      - name: Add todo item
-        steps:
-          - Navigate to "https://demo.playwright.dev/todomvc/"
-          - Add a new todo item "Buy groceries"
-          - Verify the todo appears in the list
-    ```
-  </Step>
-  <Step title="Run">
+  </Tab>
+  <Tab title="API Key">
     ```bash
-    npm test
+    ANTHROPIC_API_KEY=your_key_here
     ```
-  </Step>
-</Steps>
+  </Tab>
+  <Tab title="CI / OAuth Token">
+    ```bash
+    CLAUDE_CODE_OAUTH_TOKEN=your_token_here
+    ```
+  </Tab>
+</Tabs>
 
-## Existing Project?
+---
 
-Choose your integration:
+## Write a feature file
 
-<CardGroup cols={2}>
-  <Card title="Playwright" icon="plug" href="/integrations/playwright">
-    Standard Playwright tests
-  </Card>
-  <Card title="Playwright-BDD" icon="cucumber" href="/integrations/playwright-bdd">
-    Gherkin feature files
-  </Card>
-  <Card title="Cucumber.js" icon="leaf" href="/integrations/cucumber">
-    Cucumber step definitions
-  </Card>
-  <Card title="YAML" icon="file-code" href="/integrations/yaml">
-    Simple YAML test format
-  </Card>
-</CardGroup>
+Use `*` (asterisk) for natural, AI-friendly steps:
+
+```gherkin
+Feature: TodoMVC Automation
+
+  Scenario: Add a todo item
+    * I navigate to "https://demo.playwright.dev/todomvc/"
+    * I add a new todo item "Buy groceries"
+    * I should see "Buy groceries" in the todo list
+
+  Scenario: Filter completed todos
+    * I navigate to "https://demo.playwright.dev/todomvc/"
+    * I add three todo items: "Task 1", "Task 2", and "Task 3"
+    * I mark the first todo as completed
+    * I click the Active filter
+    * I should see 2 active todos
+```
+
+Standard `Given`/`When`/`Then` also works — both are identical under the hood.
+
+**Tips for good steps:**
+- Be specific about URLs: `I navigate to "https://..."` not `I go to the site`
+- Quote the exact text you expect: `I should see "Buy groceries"`
+- Describe intent, not mechanics: `I add a new todo item "..."` not `I click the input and type "..."`
+
+---
+
+## Run your tests
+
+```bash
+cd .openqa
+npm run test:headed   # visible browser
+npm run test          # headless
+npm run test:report   # open the HTML report
+```
+
+---
+
+## Examples
+
+Browse working examples in the repository:
+
+- [`examples/playwright-bdd/`](https://github.com/openqa-labs/openqa/tree/main/examples/playwright-bdd) — Playwright-BDD with natural language steps
+- [`examples/cucumberjs/`](https://github.com/openqa-labs/openqa/tree/main/examples/cucumberjs) — Cucumber.js integration
+- [`examples/playwright-yaml/`](https://github.com/openqa-labs/openqa/tree/main/examples/playwright-yaml) — YAML-based tests

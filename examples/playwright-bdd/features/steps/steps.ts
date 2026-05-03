@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { runAgent } from 'openqa';
+import { runAgent, claudeCode } from 'openqa';
 //import { Given, When, Then } from './fixtures';
 import { aistep } from './fixtures';
 
@@ -7,5 +7,5 @@ import { aistep } from './fixtures';
 // Uses agent configured via AGENT_TYPE env var or defaults to 'claude'
 aistep(/^(.*)$/, async ({ page, context }, action: string) => {
     console.log(`Executing AI step: ${action}`);
-    await runAgent(action, page, { verbose: true });
+    await runAgent(claudeCode('claude-haiku-4-5'), action, page, { verbose: true });
 });

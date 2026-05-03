@@ -1,16 +1,15 @@
 /**
  * OpenQA Init Command
  *
- * Scaffolds a new BDD project with OpenQA integration
+ * Scaffolds a new BDD project with OpenQA integration into a .openqa directory
  */
 
-import inquirer from 'inquirer';
+import * as clack from '@clack/prompts';
 import chalk from 'chalk';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, cpSync, readdirSync, unlinkSync } from 'fs';
-import { join, resolve } from 'path';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, cpSync, readdirSync } from 'fs';
+import { join, resolve, dirname } from 'path';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -28,12 +27,6 @@ const FRAMEWORKS = {
     dependencies: ['openqa', 'playwright-bdd', '@playwright/test', 'typescript'],
     devDependencies: ['@cucumber/cucumber'],
   },
-  'playwright-yaml': {
-    name: 'Playwright-YAML',
-    description: 'Write tests in YAML with natural language',
-    dependencies: ['openqa', '@playwright/test'],
-    devDependencies: [],
-  },
   'cucumber': {
     name: 'Cucumber.js',
     description: 'Standalone Cucumber with Playwright',
@@ -42,138 +35,177 @@ const FRAMEWORKS = {
   },
 };
 
-export async function init(framework, options) {
-  console.log(chalk.bold.cyan('\n🤖 OpenQA Project Initialization\n'));
+export async function init(cliFramework, options) {
+  clack.intro(chalk.bgCyan.black(' 🤖 OpenQA Initialization '));
 
-  // Prompt for framework (always prompt if not provided, making it truly optional)
-  if (!framework) {
-    const answers = await inquirer.prompt([
-      {
-        type: 'list',
-        name: 'framework',
-        message: 'Which testing framework would you like to use?',
-        choices: [
-          {
-            name: `${FRAMEWORKS['playwright-yaml'].name} - ${FRAMEWORKS['playwright-yaml'].description}`,
-            value: 'playwright-yaml',
-          },
-          {
-            name: `${FRAMEWORKS['playwright-bdd'].name} - ${FRAMEWORKS['playwright-bdd'].description}`,
-            value: 'playwright-bdd',
-          },
-          {
-            name: `${FRAMEWORKS['cucumber'].name} - ${FRAMEWORKS['cucumber'].description}`,
-            value: 'cucumber',
-          },
-        ],
-        default: 'playwright-yaml',
-      },
-    ]);
-    framework = answers.framework;
-  } else if (!FRAMEWORKS[framework]) {
-    console.error(chalk.red(`\n❌ Unknown framework: ${framework}`));
-    console.log(chalk.yellow('Available frameworks: playwright-bdd, playwright-yaml, cucumber\n'));
-    return;
+  const targetDir = resolve(process.cwd(), '.openqa');
+
+  // Agent Selection
+  const agent = await clack.select({
+    message: 'Which AI agent would you like to use?',
+    options: [
+      { value: 'claudeCode', label: 'Claude Code (Anthropic)' },
+    ],
+  });
+  if (clack.isCancel(agent)) return clack.cancel('Operation cancelled.');
+
+  // Model Selection
+  let model = await clack.select({
+    message: 'Which model would you like to use?',
+    options: [
+      { value: 'claude-haiku-4-5', label: 'claude-haiku-4-5 (Default)' },
+      { value: 'claude-sonnet-4-6', label: 'claude-sonnet-4-6' },
+      { value: 'claude-opus-4-7', label: 'claude-opus-4-7' },
+      { value: 'custom', label: 'Custom (enter manually)' },
+    ],
+  });
+  if (clack.isCancel(model)) return clack.cancel('Operation cancelled.');
+
+  if (model === 'custom') {
+    model = await clack.text({
+      message: 'Enter the model name manually:',
+      placeholder: 'e.g. claude-3-5-sonnet-20241022',
+      validate: (value) => {
+        if (!value) return 'Please enter a model name.';
+      }
+    });
+    if (clack.isCancel(model)) return clack.cancel('Operation cancelled.');
   }
 
-  const config = FRAMEWORKS[framework];
-  const targetDir = options.dir ? resolve(options.dir) : process.cwd();
+  // Framework Selection
+  let framework = cliFramework;
+  if (!framework || !FRAMEWORKS[framework]) {
+    framework = await clack.select({
+      message: 'Which framework do you want to use?',
+      options: [
+        { value: 'playwright-bdd', label: 'Playwright-BDD' },
+        { value: 'cucumber', label: 'CucumberJS' },
+      ],
+    });
+    if (clack.isCancel(framework)) return clack.cancel('Operation cancelled.');
+  }
 
-  // Check if directory exists and is empty
+  // Feature files path
+  let featuresPath = await clack.text({
+    message: 'What is the relative path to your feature files from the project root?',
+    initialValue: 'features/',
+    placeholder: 'features/',
+  });
+  if (clack.isCancel(featuresPath)) return clack.cancel('Operation cancelled.');
+  
+  // Normalize path format
+  if (featuresPath.endsWith('/')) featuresPath = featuresPath.slice(0, -1);
+  if (featuresPath.startsWith('./')) featuresPath = featuresPath.slice(2);
+
+  // Check if directory exists
   if (existsSync(targetDir)) {
     const files = readdirSync(targetDir);
     if (files.length > 0 && !files.every(f => f.startsWith('.'))) {
-      const { confirm } = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'confirm',
-          message: `Directory ${targetDir} is not empty. Continue anyway?`,
-          default: false,
-        },
-      ]);
-      if (!confirm) {
-        console.log(chalk.yellow('\n❌ Aborted\n'));
-        return;
+      const confirmOverride = await clack.confirm({
+        message: `Directory .openqa is not empty. Overwrite and re-initialize?`,
+        initialValue: false,
+      });
+      if (clack.isCancel(confirmOverride) || !confirmOverride) {
+        return clack.cancel('Aborted by user.');
       }
     }
   } else {
     mkdirSync(targetDir, { recursive: true });
   }
 
-  console.log(chalk.green(`\n✓ Creating ${config.name} project in ${targetDir}\n`));
+  const spinner = clack.spinner();
+  spinner.start(`Scaffolding ${FRAMEWORKS[framework].name} into .openqa...`);
 
-  // Copy template files
   const templateDir = join(__dirname, 'templates', framework);
 
   try {
-    cpSync(templateDir, targetDir, { recursive: true });
-    console.log(chalk.green('✓ Project files created'));
+    const toCopy = ['gitignore', 'package.json', 'README.md', '.env.example'];
+    
+    if (framework === 'playwright-bdd') {
+      toCopy.push('playwright.config.ts');
+      mkdirSync(join(targetDir, 'steps'), { recursive: true });
+      cpSync(join(templateDir, 'features/steps/fixtures.ts'), join(targetDir, 'steps/fixtures.ts'));
+      cpSync(join(templateDir, 'features/steps/steps.ts'), join(targetDir, 'steps/steps.ts'));
+    } else if (framework === 'cucumber') {
+      toCopy.push('cucumber.js');
+      mkdirSync(join(targetDir, 'steps'), { recursive: true });
+      cpSync(join(templateDir, 'features/step_definitions/steps.js'), join(targetDir, 'steps/steps.js'));
+    }
+
+    for (const file of toCopy) {
+      if (existsSync(join(templateDir, file))) {
+        cpSync(join(templateDir, file), join(targetDir, file === 'gitignore' ? '.gitignore' : file));
+      }
+    }
+
+    // Rewrite configuration files to point to parent features directory
+    if (framework === 'playwright-bdd') {
+      const pConfigPath = join(targetDir, 'playwright.config.ts');
+      let content = readFileSync(pConfigPath, 'utf8');
+      content = content.replace(
+        "features: 'features/*.feature',",
+        `featuresRoot: '../${featuresPath}',\n  features: '../${featuresPath}/**/*.feature',`
+      );
+      content = content.replace("'features/steps/*.ts'", `'steps/*.ts'`);
+      writeFileSync(pConfigPath, content);
+    }
+
+    if (framework === 'cucumber') {
+      const cConfigPath = join(targetDir, 'cucumber.js');
+      let content = readFileSync(cConfigPath, 'utf8');
+      content = content.replace("'features/**/*.feature'", `'../${featuresPath}/**/*.feature'`);
+      content = content.replace("'features/step_definitions/**/*.js'", `'steps/**/*.js'`);
+      writeFileSync(cConfigPath, content);
+    }
+
+    // Replace the default model in steps files
+    const stepsPath = framework === 'playwright-bdd' 
+      ? join(targetDir, 'steps/steps.ts') 
+      : join(targetDir, 'steps/steps.js');
+    
+    if (existsSync(stepsPath)) {
+      let content = readFileSync(stepsPath, 'utf8');
+      content = content.replace(/claudeCode\(['"][^'"]+['"]\)/g, `claudeCode('${model}')`);
+      writeFileSync(stepsPath, content);
+    }
+
+    // Add scripts to package.json
+    const packageJsonPath = join(targetDir, 'package.json');
+    if (existsSync(packageJsonPath)) {
+      const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+      if (framework === 'playwright-bdd') {
+        pkg.scripts = {
+          bddgen: 'bddgen',
+          test: 'npm run bddgen && playwright test',
+          'test:ui': 'npm run bddgen && playwright test --ui',
+          'test:headed': 'npm run bddgen && playwright test --headed',
+          'test:report': 'playwright show-report'
+        };
+      } else {
+        pkg.scripts = {
+          test: 'cucumber-js --format html:cucumber-test-results/cucumber-report.html',
+          'test:headed': 'HEADLESS=false cucumber-js --format html:cucumber-test-results/cucumber-report.html',
+          'test:report': 'open cucumber-test-results/cucumber-report.html'
+        };
+      }
+      writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2));
+    }
+
+    spinner.stop('✓ Project files created successfully.');
   } catch (error) {
-    console.error(chalk.red('❌ Error copying template files:'), error.message);
+    spinner.stop('❌ Error creating files.');
+    console.error(chalk.red(error.message));
     return;
   }
 
-  // Rename gitignore to .gitignore (npm excludes .gitignore from packages)
-  const gitignoreSrc = join(targetDir, 'gitignore');
-  const gitignoreDest = join(targetDir, '.gitignore');
-  if (existsSync(gitignoreSrc)) {
-    try {
-      cpSync(gitignoreSrc, gitignoreDest);
-      unlinkSync(gitignoreSrc);
-    } catch (error) {
-      console.error(chalk.yellow('⚠️  Could not create .gitignore file'));
-    }
-  }
-
-  // Create package.json if it doesn't exist
-  const packageJsonPath = join(targetDir, 'package.json');
-  if (!existsSync(packageJsonPath)) {
-    let scripts;
-    if (framework === 'playwright-bdd') {
-      scripts = {
-        bddgen: 'bddgen',
-        test: 'npm run bddgen && playwright test',
-        'test:ui': 'npm run bddgen && playwright test --ui',
-        'test:report': 'playwright show-report',
-      };
-    } else if (framework === 'playwright-yaml') {
-      scripts = {
-        generate: 'openqa generate',
-        test: 'openqa generate && playwright test',
-        'test:ui': 'openqa generate && playwright test --ui',
-        'test:headed': 'openqa generate && playwright test --headed',
-        'test:report': 'playwright show-report',
-      };
-    } else {
-      scripts = {
-        test: 'cucumber-js --format html:cucumber-test-results/cucumber-report.html',
-        'test:headed': 'HEADLESS=false cucumber-js --format html:cucumber-test-results/cucumber-report.html',
-        'test:report': 'open cucumber-test-results/cucumber-report.html',
-      };
-    }
-
-    const packageJson = {
-      name: 'openqa-project',
-      version: '1.0.0',
-      type: 'module',
-      scripts,
-      dependencies: {},
-      devDependencies: {},
-    };
-
-    writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-    console.log(chalk.green('✓ package.json created'));
-  }
-
   // Install dependencies
-  console.log(chalk.cyan('\n📦 Installing dependencies...\n'));
+  spinner.start('📦 Installing dependencies (this may take a minute)...');
   
-  // Auto-detect version: if CLI is beta, install beta; otherwise install latest
+  const config = FRAMEWORKS[framework];
   const openqaVersion = cliVersion.includes('beta') || cliVersion.includes('alpha') || cliVersion.includes('rc')
     ? `openqa@${cliVersion}`
     : 'openqa@latest';
   
-  // Replace 'openqa' in dependencies with the versioned package
   const allDeps = [...config.dependencies, ...config.devDependencies].map(dep =>
     dep === 'openqa' ? openqaVersion : dep
   );
@@ -182,116 +214,42 @@ export async function init(framework, options) {
   try {
     execSync(`npm install ${allDeps.join(' ')}`, {
       cwd: targetDir,
-      stdio: 'inherit',
+      stdio: 'ignore',
     });
-    console.log(chalk.green('\n✓ Dependencies installed'));
+    spinner.stop('✓ Dependencies installed');
     dependenciesInstalled = true;
   } catch (error) {
-    console.error(chalk.red('\n❌ Error installing dependencies'));
-    console.log(chalk.yellow('\nYou can install them manually with:'));
-    console.log(chalk.cyan(`  npm install ${allDeps.join(' ')}\n`));
+    spinner.stop('❌ Error installing dependencies');
+    console.error(chalk.red('You will need to run `npm install` manually inside .openqa'));
   }
 
-  // Prompt to install Playwright browsers
-  let browsersInstalled = false;
+  // Install Browsers
   if (dependenciesInstalled) {
-    const { installBrowsers } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'installBrowsers',
-        message: 'Install Playwright browsers now? (Chromium, ~150MB download)',
-        default: true,
-      },
-    ]);
+    const installBrowsers = await clack.confirm({
+      message: 'Install Playwright browsers now? (Chromium, ~150MB)',
+      initialValue: true,
+    });
+    
+    if (clack.isCancel(installBrowsers)) return clack.cancel('Operation cancelled.');
 
     if (installBrowsers) {
-      console.log(chalk.cyan('\n📥 Installing Chromium browser...\n'));
+      spinner.start('📥 Installing Chromium...');
       try {
-        execSync('npx playwright install chromium', {
-          cwd: targetDir,
-          stdio: 'inherit',
-        });
-        console.log(chalk.green('\n✓ Chromium browser installed'));
-        browsersInstalled = true;
+        execSync('npx playwright install chromium', { cwd: targetDir, stdio: 'ignore' });
+        spinner.stop('✓ Chromium installed');
       } catch (error) {
-        console.error(chalk.red('\n❌ Error installing browsers'));
-        console.log(chalk.yellow('\nYou can install it manually with:'));
-        console.log(chalk.cyan('  npx playwright install chromium\n'));
+        spinner.stop('❌ Error installing Chromium');
       }
     }
   }
 
-  // Prompt for AI provider selection
-  const { provider } = await inquirer.prompt([
-    {
-      type: 'list',
-      name: 'provider',
-      message: 'Which AI provider will you use?',
-      choices: [
-        {
-          name: 'Anthropic (Claude Code, Anthropic API Key)',
-          value: 'anthropic',
-        },
-        {
-          name: 'Other Providers (OpenAI, Google, etc.)',
-          value: 'other',
-        },
-      ],
-      default: 'anthropic',
-    },
-  ]);
+  clack.note(
+    `1. cd .openqa\n` +
+    `2. cp .env.example .env\n` +
+    `3. Add ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN to the .env file\n` +
+    `4. npm run test:headed`,
+    'Next Steps'
+  );
 
-  // Success message
-  console.log(chalk.bold.green('\n🎉 Project created successfully!\n'));
-  console.log(chalk.bold('Next steps:\n'));
-
-  if (targetDir !== process.cwd()) {
-    console.log(chalk.cyan(`  cd ${targetDir}`));
-  }
-
-  // Browser installation instructions (if skipped)
-  if (!browsersInstalled && dependenciesInstalled) {
-    console.log(chalk.cyan('\n  # Install Playwright browsers:'));
-    console.log(chalk.cyan('  npx playwright install chromium\n'));
-  }
-
-  // Provider-specific authentication instructions
-  console.log(chalk.cyan('  # Set up AI authentication:\n'));
-
-  if (provider === 'anthropic') {
-    console.log(chalk.bold('  Choose ONE authentication method:\n'));
-    console.log(chalk.cyan('  A. Claude Code CLI (Recommended)'));
-    console.log(chalk.cyan('     claude login\n'));
-    console.log(chalk.cyan('  B. Anthropic API Key'));
-    console.log(chalk.cyan('     cp .env.example .env'));
-    console.log(chalk.cyan('     # Edit .env and add: ANTHROPIC_API_KEY=your_key\n'));
-    console.log(chalk.cyan('  C. Claude Code OAuth Token'));
-    console.log(chalk.cyan('     cp .env.example .env'));
-    console.log(chalk.cyan('     # Edit .env and add: CLAUDE_CODE_OAUTH_TOKEN=your_token\n'));
-  } else {
-    console.log(chalk.cyan('  cp .env.example .env'));
-    console.log(chalk.cyan('  # Edit .env file and configure:\n'));
-    console.log(chalk.cyan('  AGENT_TYPE=langchain'));
-    console.log(chalk.cyan('  DEFAULT_PROVIDER=openai          # or \'google\''));
-    console.log(chalk.cyan('  OPENAI_API_KEY=your_key          # or GOOGLE_API_KEY\n'));
-    console.log(chalk.gray('  # Optional: OPENAI_MODEL, RECURSION_LIMIT, etc.\n'));
-  }
-
-  // Test run instructions
-  if (framework === 'playwright-bdd' || framework === 'playwright-yaml') {
-    console.log(chalk.cyan('  # Run the example test:'));
-    console.log(chalk.cyan('  npm test\n'));
-    console.log(chalk.cyan('  # View the test report:'));
-    console.log(chalk.cyan('  npm run test:report\n'));
-  } else {
-    console.log(chalk.cyan('  # Run the example test:'));
-    console.log(chalk.cyan('  npm test\n'));
-  }
-
-  if (framework === 'playwright-yaml') {
-    console.log(chalk.bold('Now you can write your YAML tests and let AI handle the automation!\n'));
-  } else {
-    console.log(chalk.bold('Now you can write your .feature files and let AI handle the automation!\n'));
-  }
-  console.log(chalk.gray('📚 Learn more: https://www.auto-browse.com/\n'));
+  clack.outro(chalk.bold.green('🎉 .openqa scaffolding complete!'));
 }

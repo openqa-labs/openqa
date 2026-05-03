@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-OpenQA is an AI-powered browser test automation framework that uses natural language to write Playwright tests. It integrates with Playwright, Playwright-BDD, Cucumber.js, and YAML-based test definitions. The framework supports multiple AI providers (Claude, OpenAI, Google) through two agent backends: Claude Agent SDK and LangChain.
+OpenQA is an AI-powered browser test automation framework that uses natural language to write Playwright tests. It integrates with Playwright-BDD, Cucumber.js, and YAML-based test definitions.
 
-**Key differentiator:** Uses `@playwright/mcp` with `createConnection()` to share browser context between tests and AI agents, enabling true collaborative automation with shared cookies, session storage, and page state.
+**Key architecture:** Uses a **CLI-bridge pattern** — the AI agent runs as a subprocess (`npx @anthropic-ai/claude-code`), communicating with a live Playwright browser context via a local TCP bridge wrapping `@playwright/mcp`. This avoids heavy SDK imports inside the test process.
 
 ## Common Commands
 
@@ -16,24 +16,19 @@ OpenQA is an AI-powered browser test automation framework that uses natural lang
 npm install
 
 # Run example tests
-cd examples/playwright-yaml && npm test
-cd examples/playwright-bdd-simple && npm test
+cd examples/playwright-bdd && npm test
 cd examples/cucumberjs && npm test
+cd examples/playwright-yaml && npm test
+
+# Run CLI init wizard
+node src/cli/bin.js init
 
 # Generate Playwright tests from YAML
 npx openqa generate [paths...]
 npx openqa generate --watch  # Watch mode
 
-# Run CLI init command
-npx openqa init [framework]  # framework: yaml, playwright-bdd, cucumber
-
-# Test with npm link (before publishing)
-npm link                      # In openqa repo
-cd ../test-project && npm link openqa
-
-# Test with npm pack (before publishing)
-npm pack                      # Creates openqa-x.x.x.tgz
-cd ../test-project && npm install /path/to/openqa-x.x.x.tgz
+# Test with local file link (before publishing)
+cd .openqa && npm install file:..
 ```
 
 ### Publishing & Release
@@ -46,15 +41,12 @@ npm version major   # x.0.0 -> (x+1).0.0
 # Publish to npm
 git push && git push --tags
 npm publish
-
-# Create GitHub release (manual workflow trigger on GitHub Actions)
 ```
 
 ### Playwright-BDD Specific
 ```bash
 # Generate BDD test files from .feature files
 npm run bddgen
-npx playwright-bdd generate
 
 # Run BDD tests
 npm run bddgen && npm test
@@ -64,83 +56,68 @@ npm run bddgen && npm test
 
 ### Core Agent System
 
-**Two Agent Backends:**
+**Single Agent Backend: Orchestrator** (`src/agent/Orchestrator.js`)
 
-1. **Claude Agent SDK** (`src/agent/ClaudeAgent.js`)
-   - Default agent, uses `@anthropic-ai/claude-agent-sdk`
-   - Uses `query()` function with custom hooks (PostToolUse, PostToolUseFailure, Stop)
-   - Enforces at least one Playwright tool call per step (anti-hallucination mechanism)
-   - Session management via WeakMap (browserContext -> sessionId)
-   - Supports session resumption across multiple `runAgent()` calls
-
-2. **LangChain Agent** (`src/agent/LangChainAgent.js`)
-   - Alternative backend using `@langchain/langgraph`
-   - Supports multiple providers: Anthropic, OpenAI, Google
-   - Uses `createAgent()` with middleware for error handling
-   - MemorySaver for conversation history
-   - Compatible with existing MCP tools via `@langchain/mcp-adapters`
+The `Orchestrator` is the central agent execution engine. It:
+1. Accepts a `provider` (e.g. `claudeCode('claude-haiku-4-5')`), a natural language `prompt`, and a Playwright `Page` or `BrowserContext`.
+2. Wraps the live browser context with a no-op `.close()` to prevent the MCP server from disposing it.
+3. Creates an in-memory `@playwright/mcp` server via `createConnection()`.
+4. Spins up a local **TCP server** and connects the MCP server to it via `StdioServerTransport`.
+5. Writes a per-run ephemeral `.mcp.json` to a unique `/tmp/openqa-mcp-<uuid>/` directory.
+6. Spawns the **Claude Code CLI** subprocess pointing at that `.mcp.json`.
+7. Parses the `stream-json` output from the subprocess to monitor tool calls, errors, and session IDs.
+8. On `tool_error`, immediately kills the subprocess and rejects the Promise (fails the BDD step).
+9. Cleans up all temp files and TCP sockets when the subprocess exits.
 
 **Unified Interface** (`src/index.js`):
-- `runAgent(prompt, pageOrContext, options)` - Routes to appropriate agent
-- Agent selection: `options.agentType` > `AGENT_TYPE` env var > default ('claude')
-- Accepts both Page and BrowserContext objects
-- Returns string result or usage statistics (if `returnUsage: true`)
+- `runAgent(provider, prompt, pageOrContext, options)` — main entry point
+- `runAgent.resetSession(browserContext)` — resets Claude Code session for a given context
+- `claudeCode(model?)` — creates a provider configuration object
+
+### Provider System
+
+**`claudeCode` provider** (`src/agent/providers/claudeCode.js`):
+- Default model: `claude-haiku-4-5`
+- `buildPrintCommand({ prompt, mcpConfigPath, dangerouslySkipPermissions, resumeSession })` — constructs the full `npx @anthropic-ai/claude-code` command string
+- `parseStreamLine(line)` — parses one line of `stream-json` output into typed events (`session_id`, `text`, `tool_call`, `tool_error`, `result`)
+- `parseSessionUsage(fullOutput)` — extracts token usage stats from the full output
 
 ### Session Management
 
-**ClaudeAgent Sessions** (`src/agent/SessionManager.js`):
-- Maps BrowserContext -> sessionId (WeakMap)
-- Maps BrowserContext -> MCP connection (WeakMap)
-- MCP connection reused across multiple `runAgent()` calls
-- Automatic cleanup via FinalizationRegistry when context is GC'd
-- `resetSession(browserContext)` to start fresh (closes MCP connection)
+**`SessionManager`** (`src/agent/SessionManager.js`):
+- Maps `BrowserContext` → `sessionId` using a `WeakMap`.
+- `getSession(browserContext)` — returns the active session ID for context resumption.
+- `setSession(browserContext, sessionId)` — stores a new session ID after a `system_init` event.
+- `resetSession(browserContext)` — deletes the session, forcing a fresh conversation next time.
 
-**LangChain Sessions** (`src/agent/LangChainAgent.js`):
-- Maps BrowserContext -> sessionData (WeakMap with cleanup)
-- Includes checkpointer for conversation memory
-- Thread ID management for LangGraph
-
-### BDD Integration Layer
-
-**Three Integration Points:**
-
-1. **Playwright-BDD** (`src/bdd/playwright-bdd.js`)
-   - Exports `test` fixture extended from `playwright-bdd`
-   - Exports `Given`, `When`, `Then`, `Step` from `createBdd(test)`
-   - `createAIStep(options)` - Register custom AI step pattern
-   - `AIStep` - Pre-configured catch-all step `/^(.*)$/`
-   - Auto-registers when imported: `import 'openqa/bdd/playwright-bdd'`
-
-2. **Cucumber.js** (`src/bdd/cucumber.js`)
-   - `enableAutoBrowserSetup(options)` - Auto browser lifecycle (Before/After hooks)
-   - `createAIStep(options)` - Registers AI step with context from World
-   - `createAIStepWithContext(getContext, options)` - Custom context provider
-   - Auto-setup on import: `import 'openqa/bdd/cucumber'`
-
-3. **YAML** (`src/yaml/`)
-   - Schema validation (`src/yaml/schema.js`)
-   - Test generator (`src/yaml/generator.js`) - Converts YAML to `.spec.js`
-   - Supports: tests, hooks (beforeEach/afterEach), fixtures (in progress)
-   - Generated tests use `test.step()` wrapping `runAgent()` calls
-
-### CLI (`src/cli/`)
+### CLI System (`src/cli/`)
 
 **Commands:**
-- `openqa init [framework]` - Scaffold new project (YAML, Playwright-BDD, Cucumber)
-- `openqa generate [paths...]` - Convert YAML to Playwright tests
+- `openqa init` — Interactive setup wizard using `@clack/prompts`. Scaffolds `.openqa/` directory.
+- `openqa generate [paths...]` — Converts YAML test files to Playwright `.spec.js` files.
 
-**Templates:**
-- `src/cli/templates/playwright-yaml/` - YAML test project template
-- `src/cli/templates/playwright-bdd/` - Playwright-BDD template
-- `src/cli/templates/cucumber/` - Cucumber.js template
+**Interactive Init Wizard** (`src/cli/init.js`):
+1. Prompts: Agent → Model → Framework → Feature files path
+2. Creates `.openqa/` directory in CWD
+3. Copies template files from `src/cli/templates/<framework>/`
+4. Rewrites `playwright.config.ts` or `cucumber.js` to use the user's relative features path
+5. Injects `featuresRoot` into `playwright.config.ts` to prevent out-of-bounds path errors
+6. Rewrites `steps.ts`/`steps.js` to use the chosen model
+7. Runs `npm install` and optionally `playwright install chromium`
+
+**Templates** (`src/cli/templates/`):
+- `playwright-bdd/` — Playwright-BDD template with `playwright.config.ts`, `steps.ts`, `fixtures.ts`
+- `cucumber/` — Cucumber.js template with `cucumber.js`, `steps.js`
+
+### YAML System (`src/yaml/`)
+
+- `schema.js` — Zod schema for YAML test file validation
+- `generator.js` — Converts YAML to Playwright `.spec.js` files using `runAgent(claudeCode(...), step, page)`
 
 ### Export Structure
 
 **Main exports** (`package.json`):
-- `.` → `src/index.js` - `runAgent()`, `runClaudeAgent()`, `runLangChainAgent()`
-- `./bdd` → `src/bdd/index.js` - `useBDD()`, re-exports from both integrations
-- `./bdd/playwright-bdd` → `src/bdd/playwright-bdd.js`
-- `./bdd/cucumber` → `src/bdd/cucumber.js`
+- `.` → `src/index.js` — `runAgent()`, `claudeCode()`
 
 **Peer Dependencies:**
 - `@playwright/test` ^1.57.0 (required)
@@ -149,36 +126,29 @@ npm run bddgen && npm test
 
 ## Critical Implementation Details
 
-### Tool Enforcement (ClaudeAgent)
+### Parallel-Safe Execution
 
-The ClaudeAgent uses a Stop hook to enforce at least one Playwright tool call per step:
+Each `runAgent()` call creates a **unique temp directory** (`/tmp/openqa-mcp-<uuid>/`) containing:
+- `.openqa-bridge.js` — a tiny Node.js TCP client that proxies stdio ↔ the TCP socket
+- `.mcp.json` — MCP config pointing Claude Code CLI at the bridge script
+
+This ensures parallel test workers never overwrite each other's MCP configuration.
+
+### Tool Enforcement
+
+The Orchestrator rejects any step where the subprocess exits but made **zero Playwright tool calls**. This prevents the agent from hallucinating responses without actually touching the browser.
 
 ```javascript
-// In ClaudeAgent.js
-hooks: {
-  Stop: [{
-    hooks: [async (input) => {
-      if (playwrightToolCount === 0 && stopRetryCount < MAX_STOP_RETRIES) {
-        return {
-          continue: true,
-          systemMessage: "CRITICAL: You MUST call a Playwright MCP tool..."
-        };
-      }
-      return { continue: false };
-    }]
-  }]
+if (stepCount === 0) {
+  return reject(new Error("Agent responded without calling any Playwright MCP tools."));
 }
 ```
 
-**Why:** Prevents agent from responding based on cached/remembered page state instead of actual browser state.
-
 ### Context Resolution
 
-Both Page and BrowserContext are accepted. Resolution logic:
+Both `Page` and `BrowserContext` are accepted. Resolution logic in `Orchestrator.js`:
 
 ```javascript
-let browserContext;
-let inputPage = null;
 if (pageOrContext.context && typeof pageOrContext.context === 'function') {
   inputPage = pageOrContext;
   browserContext = pageOrContext.context();
@@ -190,40 +160,30 @@ if (pageOrContext.context && typeof pageOrContext.context === 'function') {
 ### Environment Variable Loading
 
 Multiple strategies for flexibility:
-1. User's project `.env` (CWD) - loaded by `config()` in `src/index.js`
-2. OpenQA package `.env` - loaded in agent files with explicit path
-3. Environment variables (ANTHROPIC_API_KEY, AGENT_TYPE, DEFAULT_PROVIDER, etc.)
+1. `.openqa/.env` — loaded by `dotenv` when running from the `.openqa/` directory
+2. Parent project `.env` (`../.env`) — fallback for monorepo setups
+3. Shell environment — `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN`
 
-### Playwright-BDD Custom Fixtures
+### Feature File Step Syntax
 
-**Current branch: `feature/support-custom-fixtures-in-yaml`**
-
-YAML fixtures generate test.extend() code with proper setup/teardown:
-- Setup steps run before each test
-- Teardown steps run after (in try/finally blocks)
-- Fixtures are injected into test signature
+Feature files support the `*` (asterisk) bullet syntax in addition to standard `Given`/`When`/`Then`. The step definition uses `/^(.*)$/` to match any step text regardless of keyword.
 
 ## Examples Directory
 
-Each example demonstrates different integration patterns:
-- `playwright/` - Direct Playwright integration with `runAgent()`
-- `playwright-yaml/` - YAML-based tests, generate via `npx openqa generate`
-- `playwright-bdd/` - Manual Playwright-BDD setup with `createAIStep()`
-- `playwright-bdd-simple/` - One-line integration: `export { test } from 'openqa/bdd/playwright-bdd'`
-- `playwright-bdd-onkernel/` - Cloud browser integration (OnKernel)
-- `playwright-bdd-steel/` - Steel browser integration
-- `cucumberjs/` - Cucumber.js integration
+Each example demonstrates a different integration pattern:
+- `playwright-bdd/` — Playwright-BDD with `.feature` files and natural language steps
+- `playwright-yaml/` — YAML-based tests, generate via `npx openqa generate`
+- `cucumberjs/` — Cucumber.js integration
 
-All examples use `"openqa": "file:../.."` dependency for local development.
+All examples use `"openqa": "file:../.."` for local development.
 
 ## Testing Strategy
 
 Before any release:
-1. Test in examples: `cd examples/[name] && npm test`
-2. Test CLI init: `npx openqa init playwright-bdd` in temp directory
-3. Test npm pack: `npm pack && cd ../test-project && npm install ../openqa/openqa-x.x.x.tgz`
-4. Test npm link: `npm link && cd ../test-project && npm link openqa`
-5. Verify all peer dependencies work (Playwright, Playwright-BDD, Cucumber)
+1. Test examples: `cd examples/[name] && npm test`
+2. Test CLI wizard: `node src/cli/bin.js init` in a temp directory
+3. Test with `.openqa/` install: `cd .openqa && npm install file:..`
+4. Verify `npm pack` output includes only `src/`, `README.md`, `LICENSE`
 
 ## Module System
 
@@ -238,5 +198,5 @@ Before any release:
 1. **Don't skip tool calls:** Never let agents respond without calling Playwright tools
 2. **Don't break session continuity:** Session reuse is critical for multi-step workflows
 3. **Don't expose raw MCP errors:** Clean error messages before showing to users
-4. **Don't hardcode agent type:** Always respect user configuration (env var or options)
-5. **Don't create new fixtures without extend():** YAML fixtures must use proper Playwright fixture system
+4. **Don't share `.mcp.json`:** Each test run must use a unique temp directory for parallel safety
+5. **Don't dispose the browser context in MCP:** The no-op `.close()` wrapper is critical

@@ -1,56 +1,67 @@
 ---
 title: "Introduction"
-description: "AI Powered Natural Language Browser Test Automation. No selectors. No flake. Just plain English."
+description: "OpenQA — an agent harness for browser test automation. Write feature files in plain English. Run them. That's it."
 ---
 
 # OpenQA
 
-Write browser tests in natural language. AI handles the automation.
+**An agent harness for browser test automation.**
+
+Write your tests in plain English. Run `npx openqa init`. Done.
+
+<Note>
+  An **agent harness** (coined by [Martin Fowler](https://martinfowler.com/articles/harness-engineering.html) and described by [Anthropic](https://www.anthropic.com/engineering/managed-agents)) is the infrastructure that wraps an AI model — connecting it to tools, managing its context, and steering its behaviour. OpenQA is that harness, purpose-built for browser testing.
+</Note>
 
 <CardGroup cols={2}>
-  <Card title="Plain English Tests" icon="message">
-    Describe what you want, not how to find it. "Click the submit button" just works.
+  <Card title="No Code Required" icon="wand-magic-sparkles">
+    Write feature files in plain English. The harness wires Claude Code to your browser automatically.
   </Card>
   <Card title="BDD & YAML Support" icon="file-code">
-    Works with Playwright-BDD, Cucumber.js, or simple YAML files.
+    Works with Playwright-BDD, Cucumber.js, or simple YAML files — no step definitions to write.
   </Card>
-  <Card title="Any LLM Provider" icon="microchip-ai">
-    Claude, OpenAI, or Gemini. Use the model that fits your needs.
+  <Card title="No API Key Locally" icon="shield-check">
+    Uses your existing `claude login` session. API keys only needed for CI.
   </Card>
   <Card title="2-Minute Setup" icon="rocket">
-    `npx openqa init` and you're running tests.
+    `npx openqa init` scaffolds a complete `.openqa/` harness into your existing project.
   </Card>
 </CardGroup>
 
-## How It Works
+## All You Need to Write
 
-OpenQA connects an AI agent to your Playwright browser context. The agent:
+A `.feature` file:
 
-1. Receives your natural language instruction
-2. Analyzes the current page via Playwright MCP
-3. Executes the appropriate browser actions
-4. Shares session state with your test code
+```gherkin
+Feature: TodoMVC Automation
 
-```typescript
-import { test } from "@playwright/test";
-import { runAgent } from "openqa";
-
-test("AI fills form", async ({ context }) => {
-  await runAgent("Fill the contact form with test data", context);
-});
+  Scenario: Add todo item
+    * I navigate to "https://demo.playwright.dev/todomvc/"
+    * I add a new todo item "Buy groceries"
+    * I should see "Buy groceries" in the todo list
 ```
+
+Then run:
+
+```bash
+npx openqa init   # one-time setup
+cd .openqa
+npm run test:headed
+```
+
+That's it. No step definitions. No selectors. No code.
 
 ## Quick Links
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="play" href="/quickstart">
-    New project? Start here.
+    Set up in 2 minutes.
   </Card>
-  <Card title="Playwright Integration" icon="plug" href="/integrations/playwright">
-    Add to existing Playwright tests.
+  <Card title="Playwright-BDD" icon="cucumber" href="/integrations/playwright-bdd">
+    Gherkin feature files.
   </Card>
-  <Card title="API Reference" icon="code" href="/api/run-agent">
-    Full runAgent() documentation.
+  <Card title="Cucumber.js" icon="leaf" href="/integrations/cucumber">
+    Standard Cucumber.
   </Card>
   <Card title="Examples" icon="folder-open" href="/examples">
     Browse example projects.

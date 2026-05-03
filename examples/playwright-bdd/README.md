@@ -70,12 +70,12 @@ Feature: Playwright Home Page
 The key innovation is using a **single generic AI step** that handles ALL steps:
 
 ```typescript
-import { runAgent } from 'openqa';
+import { runAgent, claudeCode } from 'openqa';
 import { aistep } from './fixtures';
 
 // Generic AI-powered step - handles ANY step with natural language
 aistep(/^(.*)$/, async ({ page, context }, action: string) => {
-  await runAgent(action, context, { verbose: false });
+  await runAgent(claudeCode('claude-haiku-4-5'), action, page, { verbose: false });
 });
 ```
 
