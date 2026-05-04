@@ -14,6 +14,102 @@ export class Orchestrator {
         this.logger = new Logger(this.verbose);
     }
 
+    /**
+     * Returns the persistent connection infrastructure for the given browser context,
+     * creating it on first call. The MCP server, TCP server, and temp files (bridge 
+     * script + .mcp.json) are shared across steps. The MCP server is created once
+     * per browser context; its internal logic ensures that each new transport
+     * connection (per step) gets a fresh BrowserBackend, correctly re-discovering
+     * the live pages in the browser context.
+     */
+    async _getOrCreateMcpConnection(browserContext) {
+        const existing = sessionManager.getMcpConnection(browserContext);
+        if (existing) return existing;
+
+        // Wrap context with a no-op close so the MCP server never disposes the
+        // externally-managed browser context when it tears down its backend.
+        const contextWithManagedLifecycle = Object.create(browserContext);
+        contextWithManagedLifecycle.close = async () => {};
+
+        const mcpServer = await createConnection(
+            { capabilities: ['core', 'testing'], outputMode: 'file', saveSession: true },
+            () => Promise.resolve(contextWithManagedLifecycle)
+        );
+
+        // TCP server — lives for the entire browser-context lifetime.
+        // Each step's bridge script process connects here; the handler connects
+        // the singleton mcpServer to the new transport.
+        const tcpServer = net.createServer((socket) => {
+            const transport = new StdioServerTransport(socket, socket);
+            
+            // If the server is already connected to a transport (from a previous step),
+            // we must close the old one before we can connect the new one.
+            // The MCP SDK's Server class stores its transport in the private _transport property.
+            if (mcpServer._transport) {
+                mcpServer._transport.close().catch(() => {});
+            }
+
+            mcpServer.connect(transport).catch(e => {
+                socket.destroy();
+            });
+        });
+        await new Promise(resolve => tcpServer.listen(0, '127.0.0.1', resolve));
+        const tcpPort = tcpServer.address().port;
+
+        // Unique temp dir per browser context — parallel test workers each get their
+        // own port and config so they never collide.
+        const crypto = await import('crypto');
+        const os = await import('os');
+        const runId = crypto.randomUUID();
+        const tempDir = path.join(os.tmpdir(), `openqa-mcp-${runId}`);
+        await fs.mkdir(tempDir, { recursive: true });
+
+        const bridgeScriptPath = path.join(tempDir, '.openqa-bridge.js');
+        const mcpConfigPath = path.join(tempDir, '.mcp.json');
+
+        await fs.writeFile(bridgeScriptPath, `
+import net from 'net';
+const socket = net.createConnection(${tcpPort}, () => {
+    process.stdin.pipe(socket);
+    socket.pipe(process.stdout);
+});
+socket.on('error', () => process.exit(1));
+        `.trim());
+
+        await fs.writeFile(mcpConfigPath, JSON.stringify({
+            mcpServers: {
+                playwright: {
+                    command: 'node',
+                    args: [bridgeScriptPath]
+                }
+            }
+        }, null, 2));
+
+        // Full teardown — called when the browser context closes, via resetSession(),
+        // or as a GC fallback via FinalizationRegistry in SessionManager.
+        const cleanup = async () => {
+            try {
+                await mcpServer.close().catch(() => {});
+                tcpServer.close();
+                await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+            } catch (e) {
+                // Ignore cleanup errors
+            }
+        };
+
+        const connection = {
+            mcpConfigPath,
+            cleanup,
+        };
+        sessionManager.setMcpConnection(browserContext, connection);
+
+        // Primary teardown: fires once when the Playwright fixture closes the context.
+        // FinalizationRegistry in SessionManager handles the GC fallback.
+        browserContext.once('close', cleanup);
+
+        return connection;
+    }
+
     async run(provider, prompt, pageOrContext) {
         let browserContext;
         let inputPage = null;
@@ -99,74 +195,17 @@ export class Orchestrator {
    vs. what was actually found), then stop. Do NOT call any more tools.
 5. The test will FAIL if you respond without calling a Playwright tool.`;
 
-        // Combine prompt and system prompt
         const fullPrompt = `${systemPrompt}\n\nUser Instruction: ${prompt}`;
 
-        // Create MCP connection with a custom context getter
-        // The context getter wraps the browser context with a no-op close function
-        // This prevents the MCP server from disposing our externally-managed browser context
-        const contextWithManagedLifecycle = Object.create(browserContext);
-        contextWithManagedLifecycle.close = async () => {
-            // No-op: browser context is managed externally by Playwright test fixtures
-        };
+        // Get or create the persistent TCP infrastructure for this browser context.
+        // On the first step this creates the TCP server + temp files + MCP server.
+        // On subsequent steps it returns the already-running infrastructure.
+        const connection = await this._getOrCreateMcpConnection(browserContext);
 
-        // 1. Setup MCP Server (in-memory, tied to the Playwright test context)
-        const mcpServer = await createConnection(
-            {
-                capabilities: ['core', 'testing'],
-                // Write console/network/snapshot logs to .playwright-mcp/ files instead of
-                // stdout. The response includes a [Snapshot](path.yml) link the agent can read
-                // for element refs, keeping the full YAML tree out of the context window.
-                outputMode: 'file',
-                // Persist the MCP session state to .playwright-mcp/ so it can be resumed
-                // across steps without re-establishing browser context from scratch.
-                saveSession: true,
-            },
-            () => Promise.resolve(contextWithManagedLifecycle)
-        );
-
-        // 2. Setup local TCP Server to wrap the MCP Server in StdioServerTransport
-        const tcpServer = net.createServer((socket) => {
-            const transport = new StdioServerTransport(socket, socket);
-            mcpServer.connect(transport);
-        });
-
-        await new Promise(resolve => tcpServer.listen(0, '127.0.0.1', resolve));
-        const tcpPort = tcpServer.address().port;
-
-        // 3. Create unique Bridge artifacts for the claude CLI to connect to the TCP socket
-        // We must use a unique directory for each run so parallel tests don't overwrite each other's .mcp.json
-        const crypto = await import('crypto');
-        const os = await import('os');
-        const runId = crypto.randomUUID();
-        const tempDir = path.join(os.tmpdir(), `openqa-mcp-${runId}`);
-        await fs.mkdir(tempDir, { recursive: true });
-
-        const bridgeScriptPath = path.join(tempDir, '.openqa-bridge.js');
-        const mcpConfigPath = path.join(tempDir, '.mcp.json');
-
-        await fs.writeFile(bridgeScriptPath, `
-import net from 'net';
-const socket = net.createConnection(${tcpPort}, () => {
-    process.stdin.pipe(socket);
-    socket.pipe(process.stdout);
-});
-socket.on('error', () => process.exit(1));
-        `.trim());
-
-        await fs.writeFile(mcpConfigPath, JSON.stringify({
-            mcpServers: {
-                playwright: {
-                    command: 'node',
-                    args: [bridgeScriptPath]
-                }
-            }
-        }, null, 2));
-
-        // 4. Build and spawn the Print Command
+        // Build and spawn the Claude CLI subprocess
         const { command, stdin } = provider.buildPrintCommand({
             prompt: fullPrompt,
-            mcpConfigPath: mcpConfigPath,
+            mcpConfigPath: connection.mcpConfigPath,
             dangerouslySkipPermissions: true, // skip workspace trust prompts in CI/tests
             resumeSession: existingSessionId
         });
@@ -183,20 +222,19 @@ socket.on('error', () => process.exit(1));
             let assertionFailed = false;
             let assertionError = '';
 
-            // Spawn the subprocess using the shell so that the CLI args parse properly
+            // Spawn the subprocess using the shell so that the CLI args parse properly.
+            // cwd must be the project root so Claude Code finds .claude/ for session history.
             const child = spawn(command, {
-                cwd: process.cwd(), // <-- Run from project root so conversation history (.claude) is found!
+                cwd: process.cwd(),
                 shell: true,
                 stdio: ['pipe', 'pipe', 'inherit']
             });
 
-            // If provider specified stdin, write it
             if (stdin) {
                 child.stdin.write(stdin);
                 child.stdin.end();
             }
 
-            // Stream parsing
             let buffer = '';
             child.stdout.on('data', (data) => {
                 const chunk = data.toString('utf-8');
@@ -231,7 +269,6 @@ socket.on('error', () => process.exit(1));
                                     assertionFailed = true;
                                     assertionError = event.error;
                                 }
-                                // Action tool failed → log but let Claude retry with a different approach
                             } else if (event.type === 'result') {
                                 finalResult += event.result + '\n';
                                 if (this.verbose) this.logger.log(`✅ Result: ${event.result}`);
@@ -242,20 +279,7 @@ socket.on('error', () => process.exit(1));
             });
 
             child.on('close', async (code) => {
-                // Cleanup
-                try {
-                    await mcpServer.close();
-                    tcpServer.close();
-                    await fs.unlink(bridgeScriptPath).catch(() => { });
-                    await fs.unlink(mcpConfigPath).catch(() => { });
-                    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => { });
-                } catch (e) {
-                    // Ignore
-                }
-
                 if (assertionFailed) {
-                    // Prefer Claude's own summary (written after the PostToolUseFailure hook fired)
-                    // over the raw tool error string
                     const summary = finalResult.trim() || assertionError;
                     return reject(new Error(summary));
                 }
@@ -284,7 +308,6 @@ socket.on('error', () => process.exit(1));
             });
 
             child.on('error', (err) => {
-                tcpServer.close();
                 reject(err);
             });
         });
