@@ -41,7 +41,8 @@ Then:
 ```bash
 cd .openqa
 cp .env.example .env
-# Add ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN to .env (or use `claude login` locally)
+# Claude Code: `claude login` locally, or set ANTHROPIC_API_KEY in .env
+# OpenCode: `opencode auth login` locally, or set provider API key in .env
 npm run test:headed
 ```
 
@@ -184,7 +185,7 @@ Resets the Claude Code conversation session for a specific browser context. Usef
 
 - Node.js 18+
 - `@playwright/test` ^1.57.0
-- Claude Code (`npm install -g @anthropic-ai/claude-code`) or `ANTHROPIC_API_KEY`
+- One of: `@anthropic-ai/claude-agent-sdk` (for `claudeCode`) or `@opencode-ai/sdk` (for `openCode`)
 
 ---
 

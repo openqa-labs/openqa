@@ -17,11 +17,18 @@ The interactive wizard asks 4 questions — then everything is set up automatica
 
 ## Step 1: Choose your agent
 
-Select **Claude Code**. This is the only supported agent today.
+| Agent | SDK | Best for |
+|-------|-----|----------|
+| **Claude Code** | `@anthropic-ai/claude-agent-sdk` | Anthropic models only |
+| **OpenCode** | `@opencode-ai/sdk` | Any provider: Anthropic, OpenAI, Google, and more |
+
+Both agents connect to the same Playwright MCP server over HTTP and expose the same interface. You can swap between them by changing one import.
 
 ---
 
 ## Step 2: Choose your model
+
+**Claude Code** models:
 
 | Model | Speed | Best for |
 |-------|-------|----------|
@@ -29,7 +36,15 @@ Select **Claude Code**. This is the only supported agent today.
 | `claude-sonnet-4-6` | Medium | Complex flows |
 | `claude-opus-4-7` | Slow | Most demanding tasks |
 
-Or enter any custom model name.
+**OpenCode** models use `provider/model` format:
+
+| Model | Provider |
+|-------|----------|
+| `anthropic/claude-haiku-4-5` | Anthropic (default) |
+| `openai/gpt-4o` | OpenAI |
+| `google/gemini-2.0-flash` | Google |
+
+Or enter any custom model name your OpenCode installation supports.
 
 ---
 
@@ -75,22 +90,30 @@ Your feature files **stay where they are**.
 cp .openqa/.env.example .openqa/.env
 ```
 
-Then add one of the following to `.openqa/.env`:
-
 <Tabs>
-  <Tab title="Claude CLI (no API key needed locally)">
+  <Tab title="Claude Code — CLI login (no API key needed locally)">
     ```bash
-    claude login  # one-time login — no .env needed for local use
+    claude login  # one-time login
     ```
   </Tab>
-  <Tab title="API Key">
+  <Tab title="Claude Code — API Key">
     ```bash
     ANTHROPIC_API_KEY=your_key_here
     ```
   </Tab>
-  <Tab title="CI / OAuth Token">
+  <Tab title="OpenCode — CLI login (no API key needed locally)">
     ```bash
-    CLAUDE_CODE_OAUTH_TOKEN=your_token_here
+    opencode auth login  # one-time login
+    ```
+  </Tab>
+  <Tab title="OpenCode — API Key">
+    ```bash
+    # Anthropic
+    ANTHROPIC_API_KEY=your_key_here
+    # OpenAI
+    OPENAI_API_KEY=your_key_here
+    # Google
+    GOOGLE_API_KEY=your_key_here
     ```
   </Tab>
 </Tabs>

@@ -71,9 +71,9 @@ runAgent(provider, prompt, page/context)
 
 **`src/agent/systemPrompt.js`** — shared Playwright agent system prompt constant. Imported by both providers to ensure identical agent instructions regardless of backend.
 
-**`src/agent/providers/claudeCode.js`** — uses `@anthropic-ai/claude-agent-sdk` `query()`. MCP config: `{ type: 'sse', url: mcpUrl }`. Has a `Stop` hook to enforce at least one Playwright tool call per step. Detects assertion failures from `tool_result` blocks with `is_error: true`.
+**`src/agent/providers/claudeCode.js`** — uses `@anthropic-ai/claude-agent-sdk` `query()`. MCP config: `{ type: 'http', url: mcpUrl }`. Has a `Stop` hook to enforce at least one Playwright tool call per step. Detects assertion failures from `tool_result` blocks with `is_error: true`.
 
-**`src/agent/providers/openCode.js`** — uses `@opencode-ai/sdk` `createOpencode()`. MCP config: `{ type: 'remote', url: mcpUrl }`. Event-driven: subscribes before sending prompt, processes `message.part.updated`, `session.idle`, `session.error`. Auto-approves permission events.
+**`src/agent/providers/openCode.js`** — uses `@opencode-ai/sdk` `createOpencode()`. MCP config: `{ type: 'remote', url: mcpUrl }`. Calls `promptAsync()` (fire-and-forget) then iterates the SSE event stream, processing `message.part.updated`, `session.idle`, `session.error`. Auto-approves permission events. Detects assertion failures from both `ToolStateError` and `ToolStateCompleted` with `### Error` output (MCP `isError:true` maps to the latter).
 
 **`src/agent/SessionManager.js`** — `WeakMap<BrowserContext, sessionId>`. Enables session resumption across steps within the same scenario.
 
@@ -166,3 +166,5 @@ Before any release:
 2. **Don't break session continuity** — session reuse is critical for multi-step scenarios
 3. **Don't dispose the browser context in MCP** — the no-op `.close()` wrapper in `createMcpServer.js` is critical
 4. **Don't add a new provider without the uniform interface** — every provider must implement `run(prompt, options) → { result, steps, sessionId }`
+5. **Don't use `session.prompt()` in openCode** — use `promptAsync()`. `prompt()` blocks until the full response is ready; `session.idle` fires while you're blocked so the event is missed and the loop hangs indefinitely.
+6. **Don't assume MCP `isError:true` maps to `ToolStateError`** — OpenCode maps it to `ToolStateCompleted` with the error text in `part.state.output` starting with `### Error`. Check both states when detecting assertion failures.
