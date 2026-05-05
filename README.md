@@ -113,6 +113,47 @@ You can still use `Given`/`When`/`Then` — both work identically.
 
 ---
 
+## Changing Model or Provider
+
+After running `openqa init`, your model is set in one line inside `.openqa/steps/steps.ts` (or `steps.js` for Cucumber.js). Open that file and edit the provider call:
+
+**Change the Claude Code model:**
+```typescript
+// .openqa/steps/steps.ts
+import { runAgent, claudeCode } from 'openqa';
+
+// Before
+await runAgent(claudeCode('claude-haiku-4-5'), action, page);
+
+// After — switch to a more capable model
+await runAgent(claudeCode('claude-sonnet-4-6'), action, page);
+```
+
+**Switch from Claude Code to OpenCode (GitLab Duo, GitHub Copilot, etc.):**
+```typescript
+// .openqa/steps/steps.ts
+import { runAgent, openCode } from 'openqa';  // swap the import
+
+// GitLab Duo
+await runAgent(openCode('gitlab/duo-chat-haiku-4-5'), action, page);
+
+// GitHub Copilot
+await runAgent(openCode('github-copilot/gpt-5.4'), action, page);
+
+// Anthropic via OpenCode
+await runAgent(openCode('anthropic/claude-sonnet-4-6'), action, page);
+
+// OpenAI
+await runAgent(openCode('openai/gpt-4o'), action, page);
+
+// Google
+await runAgent(openCode('google/gemini-2.0-flash'), action, page);
+```
+
+That's the only change needed — one import swap and one string update.
+
+---
+
 ## Using `runAgent` Directly
 
 For custom Playwright tests (without BDD):

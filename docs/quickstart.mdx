@@ -167,6 +167,51 @@ npm run test:report   # open the HTML report
 
 ---
 
+## Changing Model or Provider
+
+Your model is set in one line inside `.openqa/steps/steps.ts` (Playwright-BDD) or `.openqa/steps/steps.js` (Cucumber.js). Open that file and change the provider call — that's it.
+
+**Change the Claude Code model:**
+
+```typescript
+import { runAgent, claudeCode } from 'openqa';
+
+// Fast (default)
+await runAgent(claudeCode('claude-haiku-4-5'), action, page);
+
+// More capable
+await runAgent(claudeCode('claude-sonnet-4-6'), action, page);
+await runAgent(claudeCode('claude-opus-4-7'), action, page);
+```
+
+**Switch to OpenCode — GitLab Duo or GitHub Copilot:**
+
+```typescript
+import { runAgent, openCode } from 'openqa';  // swap the import
+
+// GitLab Duo (if you use gitlab.com — login with opencode auth login)
+await runAgent(openCode('gitlab/duo-chat-haiku-4-5'), action, page);
+
+// GitHub Copilot (if you use GitHub — login with opencode auth login)
+await runAgent(openCode('github-copilot/gpt-5.4'), action, page);
+```
+
+**Switch to OpenCode — Anthropic, OpenAI, or Google:**
+
+```typescript
+import { runAgent, openCode } from 'openqa';
+
+await runAgent(openCode('anthropic/claude-sonnet-4-6'), action, page);
+await runAgent(openCode('openai/gpt-4o'), action, page);
+await runAgent(openCode('google/gemini-2.0-flash'), action, page);
+```
+
+<Note>
+  Switching between `claudeCode` and `openCode` requires changing the import **and** the provider call. Everything else — feature files, step syntax, test runner commands — stays the same.
+</Note>
+
+---
+
 ## Examples
 
 Browse working examples in the repository:
