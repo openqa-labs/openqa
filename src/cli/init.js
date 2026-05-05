@@ -14,36 +14,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const CLAUDE_HOOKS_SETTINGS = {
-  hooks: {
-    PostToolUseFailure: [
-      {
-        matcher: 'browser_verify_',
-        hooks: [
-          {
-            type: 'prompt',
-            prompt: 'A Playwright assertion tool just failed. Hook input:\n$ARGUMENTS\n\nThis is a definitive test failure — the browser verification confirmed the expected condition was NOT met.\n\nReturn this JSON:\n{"decision": "block", "reason": "Assertion failed", "hookSpecificOutput": {"hookEventName": "PostToolUseFailure", "additionalContext": "ASSERTION FAILED. Do NOT call any more browser tools. Write a clear 1-2 sentence failure summary explaining what was expected vs what was actually found on the page, then stop."}}',
-            model: 'claude-haiku-4-5',
-            timeout: 30,
-          },
-        ],
-      },
-    ],
-    Stop: [
-      {
-        hooks: [
-          {
-            type: 'prompt',
-            prompt: 'You are validating a Playwright test agent\'s final output. Hook context:\n$ARGUMENTS\n\nCheck the tool_calls array. If none of them are browser_verify_* tools, return {"ok": true} immediately — no assertion was involved.\n\nIf there were browser_verify_* tool calls, inspect the output field. Does it contain a clear failure summary stating what was expected and what was actually found on the page? If yes: {"ok": true}. If the output is absent or too vague: {"ok": false, "reason": "Please write a clear 1-2 sentence failure summary: what the test expected to see, and what was actually on the page."}',
-            model: 'claude-haiku-4-5',
-            timeout: 30,
-          },
-        ],
-      },
-    ],
-  },
-};
-
 // Read CLI's own package.json to detect version
 const cliPackageJson = JSON.parse(
   readFileSync(join(__dirname, '../../package.json'), 'utf-8')
@@ -65,6 +35,23 @@ const FRAMEWORKS = {
   },
 };
 
+const CLAUDE_CODE_MODELS = [
+  { value: 'claude-haiku-4-5', label: 'claude-haiku-4-5 (Default — fast & affordable)' },
+  { value: 'claude-sonnet-4-6', label: 'claude-sonnet-4-6' },
+  { value: 'claude-opus-4-7', label: 'claude-opus-4-7' },
+  { value: 'custom', label: 'Custom (enter manually)' },
+];
+
+const OPENCODE_MODELS = [
+  { value: 'gitlab/duo-chat-haiku-4-5',     label: 'gitlab/duo-chat-haiku-4-5 (Default — GitLab Duo)' },
+  { value: 'github-copilot/gpt-5.4',        label: 'github-copilot/gpt-5.4 (GitHub Copilot)' },
+  { value: 'anthropic/claude-haiku-4-5',    label: 'anthropic/claude-haiku-4-5' },
+  { value: 'anthropic/claude-sonnet-4-6',   label: 'anthropic/claude-sonnet-4-6' },
+  { value: 'openai/gpt-4o',                 label: 'openai/gpt-4o' },
+  { value: 'google/gemini-2.0-flash',       label: 'google/gemini-2.0-flash' },
+  { value: 'custom',                         label: 'Custom (enter manually — format: provider/model)' },
+];
+
 export async function init(cliFramework, options) {
   clack.intro(chalk.bgCyan.black(' 🤖 OpenQA Initialization '));
 
@@ -74,27 +61,27 @@ export async function init(cliFramework, options) {
   const agent = await clack.select({
     message: 'Which AI agent would you like to use?',
     options: [
-      { value: 'claudeCode', label: 'Claude Code (Anthropic)' },
+      { value: 'claudeCode', label: 'Claude Code (Anthropic SDK)' },
+      { value: 'openCode',   label: 'OpenCode (multi-provider — Anthropic, OpenAI, Google, …)' },
     ],
   });
   if (clack.isCancel(agent)) return clack.cancel('Operation cancelled.');
 
-  // Model Selection
+  // Model Selection — options differ by agent
+  const modelOptions = agent === 'openCode' ? OPENCODE_MODELS : CLAUDE_CODE_MODELS;
   let model = await clack.select({
     message: 'Which model would you like to use?',
-    options: [
-      { value: 'claude-haiku-4-5', label: 'claude-haiku-4-5 (Default)' },
-      { value: 'claude-sonnet-4-6', label: 'claude-sonnet-4-6' },
-      { value: 'claude-opus-4-7', label: 'claude-opus-4-7' },
-      { value: 'custom', label: 'Custom (enter manually)' },
-    ],
+    options: modelOptions,
   });
   if (clack.isCancel(model)) return clack.cancel('Operation cancelled.');
 
   if (model === 'custom') {
+    const placeholder = agent === 'openCode'
+      ? 'e.g. anthropic/claude-3-5-sonnet-20241022'
+      : 'e.g. claude-3-5-sonnet-20241022';
     model = await clack.text({
       message: 'Enter the model name manually:',
-      placeholder: 'e.g. claude-3-5-sonnet-20241022',
+      placeholder,
       validate: (value) => {
         if (!value) return 'Please enter a model name.';
       }
@@ -122,7 +109,7 @@ export async function init(cliFramework, options) {
     placeholder: 'features/',
   });
   if (clack.isCancel(featuresPath)) return clack.cancel('Operation cancelled.');
-  
+
   // Normalize path format
   if (featuresPath.endsWith('/')) featuresPath = featuresPath.slice(0, -1);
   if (featuresPath.startsWith('./')) featuresPath = featuresPath.slice(2);
@@ -149,14 +136,8 @@ export async function init(cliFramework, options) {
   const templateDir = join(__dirname, 'templates', framework);
 
   try {
-    // Write Claude Code hooks settings — enables PostToolUseFailure and Stop hooks
-    // that replace the hard-coded kill logic and provide meaningful failure reports
-    const claudeDir = join(targetDir, '.claude');
-    mkdirSync(claudeDir, { recursive: true });
-    writeFileSync(join(claudeDir, 'settings.json'), JSON.stringify(CLAUDE_HOOKS_SETTINGS, null, 2));
-
     const toCopy = ['gitignore', 'package.json', 'README.md', '.env.example'];
-    
+
     if (framework === 'playwright-bdd') {
       toCopy.push('playwright.config.ts');
       mkdirSync(join(targetDir, 'steps'), { recursive: true });
@@ -194,14 +175,27 @@ export async function init(cliFramework, options) {
       writeFileSync(cConfigPath, content);
     }
 
-    // Replace the default model in steps files
-    const stepsPath = framework === 'playwright-bdd' 
-      ? join(targetDir, 'steps/steps.ts') 
+    // Rewrite steps file: swap provider factory and model
+    const stepsPath = framework === 'playwright-bdd'
+      ? join(targetDir, 'steps/steps.ts')
       : join(targetDir, 'steps/steps.js');
-    
+
     if (existsSync(stepsPath)) {
       let content = readFileSync(stepsPath, 'utf8');
-      content = content.replace(/claudeCode\(['"][^'"]+['"]\)/g, `claudeCode('${model}')`);
+
+      if (agent === 'openCode') {
+        // Swap import: claudeCode → openCode
+        content = content.replace(
+          /import\s*\{([^}]*)\}\s*from\s*['"]openqa['"]/,
+          (_, imports) => `import { ${imports.replace('claudeCode', 'openCode')} } from 'openqa'`
+        );
+        // Swap provider call
+        content = content.replace(/claudeCode\(['"][^'"]*['"]\)/g, `openCode('${model}')`);
+      } else {
+        // claudeCode: just update the model string
+        content = content.replace(/claudeCode\(['"][^'"]*['"]\)/g, `claudeCode('${model}')`);
+      }
+
       writeFileSync(stepsPath, content);
     }
 
@@ -236,13 +230,18 @@ export async function init(cliFramework, options) {
 
   // Install dependencies
   spinner.start('📦 Installing dependencies (this may take a minute)...');
-  
-  const config = FRAMEWORKS[framework];
+
+  const frameworkConfig = FRAMEWORKS[framework];
   const openqaVersion = cliVersion.includes('beta') || cliVersion.includes('alpha') || cliVersion.includes('rc')
     ? `openqa@${cliVersion}`
     : 'openqa@latest';
-  
-  const allDeps = [...config.dependencies, ...config.devDependencies].map(dep =>
+
+  // Add the chosen agent SDK as a dependency
+  const agentSdk = agent === 'openCode'
+    ? '@opencode-ai/sdk'
+    : '@anthropic-ai/claude-agent-sdk';
+
+  const allDeps = [...frameworkConfig.dependencies, ...frameworkConfig.devDependencies, agentSdk].map(dep =>
     dep === 'openqa' ? openqaVersion : dep
   );
 
@@ -265,7 +264,7 @@ export async function init(cliFramework, options) {
       message: 'Install Playwright browsers now? (Chromium, ~150MB)',
       initialValue: true,
     });
-    
+
     if (clack.isCancel(installBrowsers)) return clack.cancel('Operation cancelled.');
 
     if (installBrowsers) {
@@ -279,10 +278,16 @@ export async function init(cliFramework, options) {
     }
   }
 
+  // Next Steps
+  const localAuthNote = agent === 'openCode'
+    ? `   Local (no API key needed): opencode auth login\n   CI / API key:               add provider key to .env (e.g. ANTHROPIC_API_KEY)`
+    : `   Local (no API key needed): claude login\n   CI / API key:               add ANTHROPIC_API_KEY to .env`;
+
   clack.note(
     `1. cd .openqa\n` +
     `2. cp .env.example .env\n` +
-    `3. Add ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN to the .env file\n` +
+    `3. Authenticate:\n` +
+    localAuthNote + `\n` +
     `4. npm run test:headed`,
     'Next Steps'
   );

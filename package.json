@@ -1,7 +1,7 @@
 {
   "name": "openqa",
-  "version": "0.0.7",
-  "description": "Agent Harness for Browser Test Automation — write tests in natural language, powered by Claude Code",
+  "version": "0.0.8",
+  "description": "Agent Harness for Browser Test Automation — write tests in natural language, powered by Claude Code or OpenCode",
   "type": "module",
   "bin": {
     "openqa": "./src/cli/bin.js"
@@ -49,15 +49,22 @@
     "commander": "^12.1.0",
     "dotenv": "^17.2.3",
     "inquirer": "^9.3.8",
-    "js-yaml": "^4.1.1",
-    "zod": "^3.25.76"
+    "js-yaml": "^4.1.1"
   },
   "peerDependencies": {
+    "@anthropic-ai/claude-agent-sdk": ">=0.2",
     "@cucumber/cucumber": "^11.0.0",
+    "@opencode-ai/sdk": ">=1.14",
     "@playwright/test": "^1.57.0",
     "playwright-bdd": "^8.0.0"
   },
   "peerDependenciesMeta": {
+    "@anthropic-ai/claude-agent-sdk": {
+      "optional": true
+    },
+    "@opencode-ai/sdk": {
+      "optional": true
+    },
     "playwright-bdd": {
       "optional": true
     },
@@ -66,7 +73,10 @@
     }
   },
   "devDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.126",
     "@cucumber/cucumber": "^12.2.0",
-    "playwright-bdd": "^8.4.1"
+    "@opencode-ai/sdk": "^1.14.33",
+    "playwright-bdd": "^8.4.1",
+    "zod": "^4.4.2"
   }
 }

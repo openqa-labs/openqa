@@ -17,11 +17,18 @@ The interactive wizard asks 4 questions — then everything is set up automatica
 
 ## Step 1: Choose your agent
 
-Select **Claude Code**. This is the only supported agent today.
+| Agent | SDK | Best for |
+|-------|-----|----------|
+| **Claude Code** | `@anthropic-ai/claude-agent-sdk` | Anthropic models only |
+| **OpenCode** | `@opencode-ai/sdk` | Any provider: Anthropic, OpenAI, Google, and more |
+
+Both agents connect to the same Playwright MCP server over HTTP and expose the same interface. You can swap between them by changing one import.
 
 ---
 
 ## Step 2: Choose your model
+
+**Claude Code** models:
 
 | Model | Speed | Best for |
 |-------|-------|----------|
@@ -29,7 +36,17 @@ Select **Claude Code**. This is the only supported agent today.
 | `claude-sonnet-4-6` | Medium | Complex flows |
 | `claude-opus-4-7` | Slow | Most demanding tasks |
 
-Or enter any custom model name.
+**OpenCode** models use `provider/model` format:
+
+| Model | Provider |
+|-------|----------|
+| `gitlab/duo-chat-haiku-4-5` | GitLab Duo (default) |
+| `github-copilot/gpt-5.4` | GitHub Copilot |
+| `anthropic/claude-haiku-4-5` | Anthropic |
+| `openai/gpt-4o` | OpenAI |
+| `google/gemini-2.0-flash` | Google |
+
+Or enter any custom model name your OpenCode installation supports.
 
 ---
 
@@ -71,27 +88,40 @@ Your feature files **stay where they are**.
 
 ## Authentication
 
-```bash
-cp .openqa/.env.example .openqa/.env
-```
-
-Then add one of the following to `.openqa/.env`:
+<Note>
+  **No API key needed for local development.** Just log in once with the CLI and you're done.
+</Note>
 
 <Tabs>
-  <Tab title="Claude CLI (no API key needed locally)">
+  <Tab title="Claude Code (local)">
     ```bash
-    claude login  # one-time login — no .env needed for local use
+    claude login
     ```
+    One-time login. No `.env` needed for local runs.
   </Tab>
-  <Tab title="API Key">
+  <Tab title="OpenCode (local)">
     ```bash
+    opencode auth login
+    ```
+    One-time login — works with GitLab Duo, GitHub Copilot, Anthropic, OpenAI, Google, and more. No `.env` needed for local runs.
+  </Tab>
+  <Tab title="API Key (Claude Code)">
+    ```bash
+    cp .openqa/.env.example .openqa/.env
+    # then add:
     ANTHROPIC_API_KEY=your_key_here
     ```
+    Use this for CI or if you prefer an explicit key.
   </Tab>
-  <Tab title="CI / OAuth Token">
+  <Tab title="API Key (OpenCode)">
     ```bash
-    CLAUDE_CODE_OAUTH_TOKEN=your_token_here
+    cp .openqa/.env.example .openqa/.env
+    # then add whichever provider key you need:
+    ANTHROPIC_API_KEY=your_key_here
+    # OPENAI_API_KEY=your_key_here
+    # GOOGLE_API_KEY=your_key_here
     ```
+    Use this for CI or if you prefer an explicit key.
   </Tab>
 </Tabs>
 
@@ -134,6 +164,51 @@ npm run test:headed   # visible browser
 npm run test          # headless
 npm run test:report   # open the HTML report
 ```
+
+---
+
+## Changing Model or Provider
+
+Your model is set in one line inside `.openqa/steps/steps.ts` (Playwright-BDD) or `.openqa/steps/steps.js` (Cucumber.js). Open that file and change the provider call — that's it.
+
+**Change the Claude Code model:**
+
+```typescript
+import { runAgent, claudeCode } from 'openqa';
+
+// Fast (default)
+await runAgent(claudeCode('claude-haiku-4-5'), action, page);
+
+// More capable
+await runAgent(claudeCode('claude-sonnet-4-6'), action, page);
+await runAgent(claudeCode('claude-opus-4-7'), action, page);
+```
+
+**Switch to OpenCode — GitLab Duo or GitHub Copilot:**
+
+```typescript
+import { runAgent, openCode } from 'openqa';  // swap the import
+
+// GitLab Duo (if you use gitlab.com — login with opencode auth login)
+await runAgent(openCode('gitlab/duo-chat-haiku-4-5'), action, page);
+
+// GitHub Copilot (if you use GitHub — login with opencode auth login)
+await runAgent(openCode('github-copilot/gpt-5.4'), action, page);
+```
+
+**Switch to OpenCode — Anthropic, OpenAI, or Google:**
+
+```typescript
+import { runAgent, openCode } from 'openqa';
+
+await runAgent(openCode('anthropic/claude-sonnet-4-6'), action, page);
+await runAgent(openCode('openai/gpt-4o'), action, page);
+await runAgent(openCode('google/gemini-2.0-flash'), action, page);
+```
+
+<Note>
+  Switching between `claudeCode` and `openCode` requires changing the import **and** the provider call. Everything else — feature files, step syntax, test runner commands — stays the same.
+</Note>
 
 ---
 

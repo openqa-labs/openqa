@@ -11,9 +11,9 @@
 - **🗣️ Write Tests in Plain English** — Describe what you want, not how to find it. "Add laptop to cart" just works.
 - **📝 BDD & YAML Support** — Works with Playwright-BDD, Cucumber.js, or simple YAML files.
 - **⚡ 2-Minute Setup** — `npx openqa init` scaffolds a fully configured `.openqa/` in your existing project.
-- **🔒 No API Keys Required Locally** — Uses your existing `claude login` session. API keys only needed for CI.
+- **🔒 No API Keys Required Locally** — Uses your existing `claude login` session (Claude Code) or `opencode auth login` (OpenCode). API keys only needed for CI.
 
-**Powered by:** [Claude Code CLI](https://claude.ai/code) • [Playwright MCP](https://github.com/microsoft/playwright-mcp)
+**Powered by:** [Claude Code SDK](https://claude.ai/code) • [OpenCode SDK](https://opencode.ai) • [Playwright MCP](https://github.com/microsoft/playwright-mcp)
 
 ---
 
@@ -26,8 +26,8 @@ npx openqa init
 ```
 
 The interactive wizard will ask you:
-1. **Agent** — Claude Code (the only agent today)
-2. **Model** — `claude-haiku-4-5` (default), `claude-sonnet-4-6`, `claude-opus-4-7`, or custom
+1. **Agent** — Claude Code (`@anthropic-ai/claude-agent-sdk`) or OpenCode (`@opencode-ai/sdk`)
+2. **Model** — `claude-haiku-4-5` (default), `claude-sonnet-4-6`, `claude-opus-4-7`, or custom (OpenCode supports `anthropic/...`, `openai/...`, `google/...`)
 3. **Framework** — Playwright-BDD or Cucumber.js
 4. **Feature files path** — Relative path to your `.feature` files (default: `features/`)
 
@@ -41,7 +41,8 @@ Then:
 ```bash
 cd .openqa
 cp .env.example .env
-# Add ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN to .env (or use `claude login` locally)
+# Local: run `claude login` or `opencode auth login` — no API key needed
+# CI: add the relevant API key to .env
 npm run test:headed
 ```
 
@@ -49,38 +50,42 @@ npm run test:headed
 
 ## How It Works
 
-OpenQA uses a **CLI-bridge architecture**:
-
 1. Your BDD step definitions call `runAgent(claudeCode('model'), 'natural language step', page)`.
-2. `runAgent` spawns a **Claude Code CLI subprocess** (`npx @anthropic-ai/claude-code`) with a dynamically generated `.mcp.json`.
-3. The `.mcp.json` points the CLI to a local TCP bridge server that wraps **your existing Playwright browser context** via `@playwright/mcp`.
-4. Claude Code drives the real browser using Playwright MCP tools (`browser_navigate`, `browser_click`, etc.).
-5. The step passes or fails based on what Claude reports back.
+2. OpenQA creates a Playwright MCP server in-process and exposes it over HTTP/SSE on a random localhost port.
+3. The chosen AI provider SDK connects to that MCP URL and receives your natural language instruction.
+4. The agent drives the real browser using Playwright MCP tools (`browser_navigate`, `browser_click`, etc.).
+5. The step passes or fails based on what the agent reports back.
 
-This means:
-- **Zero SDK imports** — the heavy AI SDK runs as a subprocess, not in your test process.
-- **True browser sharing** — Claude drives the exact same page object your test holds.
-- **Parallel-safe** — each test worker gets its own ephemeral TCP port and `.mcp.json`.
-- **Session resumption** — multi-step scenarios resume the same Claude Code conversation.
+- **True browser sharing** — the agent drives the exact same page object your test holds.
+- **Parallel-safe** — each test worker gets its own HTTP port. No shared config files.
+- **Session resumption** — within a scenario, the agent resumes its conversation across steps.
+- **Multi-provider** — swap `claudeCode` for `openCode` to use any model from OpenAI, Google, Anthropic, etc.
 
 ---
 
 ## Authentication
 
-Choose **one** method:
+**No API key needed for local development** — just log in with the CLI once:
 
 ```bash
-# A. Claude Code CLI login (recommended for local development — no API key needed!)
+# Claude Code
 claude login
 
-# B. Environment variable
-export ANTHROPIC_API_KEY=your_key
-
-# C. .env file inside .openqa/
-echo "ANTHROPIC_API_KEY=your_key" > .openqa/.env
+# OpenCode (supports GitLab Duo, GitHub Copilot, Anthropic, OpenAI, Google, …)
+opencode auth login
 ```
 
-For CI environments, set `ANTHROPIC_API_KEY` (or `CLAUDE_CODE_OAUTH_TOKEN`) as a secret.
+For CI (or if you prefer an API key), set the relevant key in `.openqa/.env`:
+
+```bash
+# Claude Code
+ANTHROPIC_API_KEY=your_key
+
+# OpenCode — use whichever provider you're connecting to
+ANTHROPIC_API_KEY=your_key
+# OPENAI_API_KEY=your_key
+# GOOGLE_API_KEY=your_key
+```
 
 ---
 
@@ -105,6 +110,47 @@ Feature: TodoMVC Automation
 ```
 
 You can still use `Given`/`When`/`Then` — both work identically.
+
+---
+
+## Changing Model or Provider
+
+After running `openqa init`, your model is set in one line inside `.openqa/steps/steps.ts` (or `steps.js` for Cucumber.js). Open that file and edit the provider call:
+
+**Change the Claude Code model:**
+```typescript
+// .openqa/steps/steps.ts
+import { runAgent, claudeCode } from 'openqa';
+
+// Before
+await runAgent(claudeCode('claude-haiku-4-5'), action, page);
+
+// After — switch to a more capable model
+await runAgent(claudeCode('claude-sonnet-4-6'), action, page);
+```
+
+**Switch from Claude Code to OpenCode (GitLab Duo, GitHub Copilot, etc.):**
+```typescript
+// .openqa/steps/steps.ts
+import { runAgent, openCode } from 'openqa';  // swap the import
+
+// GitLab Duo
+await runAgent(openCode('gitlab/duo-chat-haiku-4-5'), action, page);
+
+// GitHub Copilot
+await runAgent(openCode('github-copilot/gpt-5.4'), action, page);
+
+// Anthropic via OpenCode
+await runAgent(openCode('anthropic/claude-sonnet-4-6'), action, page);
+
+// OpenAI
+await runAgent(openCode('openai/gpt-4o'), action, page);
+
+// Google
+await runAgent(openCode('google/gemini-2.0-flash'), action, page);
+```
+
+That's the only change needed — one import swap and one string update.
 
 ---
 
@@ -145,12 +191,9 @@ Runs the AI agent with a natural language instruction.
 
 ### `claudeCode(model?)`
 
-Creates a Claude Code provider configuration.
-
 ```javascript
 import { claudeCode } from 'openqa';
-
-const provider = claudeCode('claude-haiku-4-5'); // default model
+const provider = claudeCode('claude-haiku-4-5'); // default
 ```
 
 | Model | Description |
@@ -158,6 +201,29 @@ const provider = claudeCode('claude-haiku-4-5'); // default model
 | `claude-haiku-4-5` | Fast, cost-efficient (default) |
 | `claude-sonnet-4-6` | Balanced performance |
 | `claude-opus-4-7` | Most capable |
+
+Requires `@anthropic-ai/claude-agent-sdk` to be installed.
+
+### `openCode(model?)`
+
+```javascript
+import { openCode } from 'openqa';
+const provider = openCode('gitlab/duo-chat-haiku-4-5'); // GitLab Duo (default in init)
+// or: openCode('github-copilot/gpt-5.4')
+// or: openCode('anthropic/claude-haiku-4-5'), openCode('openai/gpt-4o'), openCode('google/gemini-2.0-flash')
+```
+
+Model format: `provider/model`. Supports any provider configured in your OpenCode installation.
+
+| Model | Provider |
+|-------|----------|
+| `gitlab/duo-chat-haiku-4-5` | GitLab Duo (default) |
+| `github-copilot/gpt-5.4` | GitHub Copilot |
+| `anthropic/claude-haiku-4-5` | Anthropic |
+| `openai/gpt-4o` | OpenAI |
+| `google/gemini-2.0-flash` | Google |
+
+Requires `@opencode-ai/sdk` to be installed.
 
 ### `runAgent.resetSession(browserContext)`
 
@@ -177,7 +243,7 @@ Resets the Claude Code conversation session for a specific browser context. Usef
 
 - Node.js 18+
 - `@playwright/test` ^1.57.0
-- Claude Code (`npm install -g @anthropic-ai/claude-code`) or `ANTHROPIC_API_KEY`
+- One of: `@anthropic-ai/claude-agent-sdk` (for `claudeCode`) or `@opencode-ai/sdk` (for `openCode`)
 
 ---
 

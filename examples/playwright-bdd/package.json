@@ -11,6 +11,7 @@
     "test:report": "playwright show-report"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.126",
     "openqa": "file:../.."
   },
   "devDependencies": {

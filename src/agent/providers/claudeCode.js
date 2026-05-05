@@ -1,152 +1,115 @@
-const shellEscape = (s) => "'" + s.replace(/'/g, "'\\''") + "'";
+import { query } from '@anthropic-ai/claude-agent-sdk';
+import { PLAYWRIGHT_SYSTEM_PROMPT } from '../systemPrompt.js';
 
-/** Maps allowlisted tool names to the input field containing the display arg */
-const TOOL_ARG_FIELDS = {
-  Bash: "command",
-  WebSearch: "query",
-  WebFetch: "url",
-  Agent: "description",
-};
+export const claudeCode = (model = 'claude-haiku-4-5', options = {}) => ({
+    name: 'claude-code',
 
-/**
- * Extract an error message from a parsed JSON error event.
- */
-const extractErrorMessage = (obj) => {
-  const err = obj.error;
-  if (typeof err === "string") return err;
-  if (typeof err === "object" && err !== null && typeof err.message === "string") {
-    return err.message;
-  }
-  if (typeof obj.message === "string") return obj.message;
-  return undefined;
-};
+    async run(prompt, { mcpUrl, existingSessionId, verbose, logger }) {
+        let stepCount = 0;
+        let finalResult = '';
+        let assertionFailed = false;
+        let assertionError = '';
+        let currentSessionId = existingSessionId;
 
-const parseStreamJsonLine = (line, toolNameById) => {
-  if (!line.startsWith("{")) return [];
-  try {
-    const obj = JSON.parse(line);
-    if (obj.type === "assistant" && Array.isArray(obj.message?.content)) {
-      const events = [];
-      const texts = [];
-      for (const block of obj.message.content) {
-        if (block.type === "text" && typeof block.text === "string") {
-          texts.push(block.text);
-        } else if (
-          block.type === "tool_use" &&
-          typeof block.name === "string" &&
-          block.input !== undefined
-        ) {
-          if (texts.length > 0) {
-            events.push({ type: "text", text: texts.join("") });
-            texts.length = 0;
-          }
+        // Map tool_use_id → tool name so we can identify which tool errored
+        const toolNameById = new Map();
 
-          // Buffer id→name so tool_error events can carry the tool name
-          if (block.id) toolNameById.set(block.id, block.name);
+        // Stop hook: if the agent tries to respond without calling any Playwright tool,
+        // force it to continue and call one. Allow up to 2 retries before giving up.
+        let stopRetryCount = 0;
+        const MAX_STOP_RETRIES = 2;
 
-          const argsString = typeof block.input === 'object' ? JSON.stringify(block.input) : block.input;
-          events.push({
-            type: "tool_call",
-            name: block.name,
-            args: argsString,
-          });
-        }
-      }
-      if (texts.length > 0) {
-        events.push({ type: "text", text: texts.join("") });
-      }
-      return events;
-    }
-    if (obj.type === "user" && Array.isArray(obj.message?.content)) {
-      const events = [];
-      for (const block of obj.message.content) {
-        if (block.type === "tool_result" && block.is_error) {
-          let errorText = typeof block.content === 'string'
-              ? block.content
-              : Array.isArray(block.content)
-                  ? block.content.map(c => c.text || JSON.stringify(c)).join('\\n')
-                  : 'Unknown tool error';
-
-          // Clean up section headers (### Error, ### Result) that MCP prepends
-          errorText = errorText.replace(/^### (?:Error|Result)\\n/, '').trim();
-
-          events.push({
-            type: "tool_error",
-            toolName: toolNameById.get(block.tool_use_id) || '',
-            error: errorText,
-            toolId: block.tool_use_id,
-          });
-        }
-      }
-      return events;
-    }
-    if (obj.type === "result" && typeof obj.result === "string") {
-      return [{ type: "result", result: obj.result }];
-    }
-    if (
-      obj.type === "system" &&
-      obj.subtype === "init" &&
-      typeof obj.session_id === "string"
-    ) {
-      return [{ type: "session_id", sessionId: obj.session_id }];
-    }
-  } catch {
-    // Not valid JSON — skip
-  }
-  return [];
-};
-
-export const claudeCode = (model = "claude-haiku-4-5", options = {}) => {
-  const toolNameById = new Map();
-
-  return {
-    name: "claude-code",
-    env: options.env ?? {},
-    captureSessions: options.captureSessions ?? true,
-
-    buildPrintCommand({ prompt, mcpConfigPath, dangerouslySkipPermissions, resumeSession }) {
-      const skipPerms = dangerouslySkipPermissions
-        ? " --dangerously-skip-permissions"
-        : "";
-      const mcpFlag = mcpConfigPath ? ` --mcp-config ${shellEscape(mcpConfigPath)} --strict-mcp-config` : "";
-      const resumeFlag = resumeSession ? ` --resume ${shellEscape(resumeSession)}` : "";
-      return {
-        command: `npx @anthropic-ai/claude-code --print --verbose${skipPerms}${mcpFlag} --output-format stream-json --model ${shellEscape(model)}${resumeFlag} -p -`,
-        stdin: prompt,
-      };
-    },
-
-    parseStreamLine(line) {
-      return parseStreamJsonLine(line, toolNameById);
-    },
-
-    parseSessionUsage(content) {
-      const lines = content.split("\n");
-      for (let i = lines.length - 1; i >= 0; i--) {
-        const line = lines[i];
-        if (!line) continue;
-        if (!line.startsWith("{")) continue;
-        try {
-          const obj = JSON.parse(line);
-          if (obj.type === "assistant" && obj.message?.usage) {
-            const u = obj.message.usage;
-            if (
-              typeof u.input_tokens === "number" &&
-              typeof u.output_tokens === "number"
-            ) {
-              return {
-                inputTokens: u.input_tokens,
-                cacheCreationInputTokens: u.cache_creation_input_tokens || 0,
-                cacheReadInputTokens: u.cache_read_input_tokens || 0,
-                outputTokens: u.output_tokens,
-              };
+        const stopHook = async (_input) => {
+            if (stepCount === 0 && stopRetryCount < MAX_STOP_RETRIES) {
+                stopRetryCount++;
+                if (verbose) logger.log(`⚠️  No Playwright tool called — forcing retry (${stopRetryCount}/${MAX_STOP_RETRIES})\n`);
+                return {
+                    continue: true,
+                    systemMessage: 'CRITICAL: You MUST call a Playwright MCP tool (e.g. browser_snapshot, browser_navigate, browser_verify_text_visible). You have not called any tool yet. Call one NOW.',
+                };
             }
-          }
-        } catch {
-          // Not valid JSON — skip
+            return { continue: false };
+        };
+
+        const messages = query({
+            prompt,
+            options: {
+                model,
+                mcpServers: {
+                    playwright: { type: 'http', url: mcpUrl },
+                },
+                systemPrompt: PLAYWRIGHT_SYSTEM_PROMPT,
+                permissionMode: 'bypassPermissions',
+                resume: existingSessionId,
+                hooks: {
+                    Stop: [{ hooks: [stopHook] }],
+                },
+                cwd: process.cwd(),
+            },
+        });
+
+        for await (const message of messages) {
+            if (message.type === 'system' && message.subtype === 'init') {
+                currentSessionId = message.session_id;
+                if (verbose && !existingSessionId) {
+                    logger.log(`🆕 Started new session: ${currentSessionId}\n`);
+                }
+            }
+
+            if (message.type === 'assistant' && Array.isArray(message.message?.content)) {
+                for (const block of message.message.content) {
+                    if (block.type === 'tool_use') {
+                        toolNameById.set(block.id, block.name);
+                        stepCount++;
+                        if (verbose) logger.log(`🔧 Tool Call: ${block.name}(${JSON.stringify(block.input ?? {})})`);
+                    }
+                    if (block.type === 'text' && block.text && verbose) {
+                        logger.log(`💬 Assistant: ${block.text}`);
+                    }
+                }
+            }
+
+            // Detect tool errors from user messages (tool_result blocks with is_error:true)
+            if (message.type === 'user' && Array.isArray(message.message?.content)) {
+                for (const block of message.message.content) {
+                    if (block.type === 'tool_result' && block.is_error) {
+                        const toolName = toolNameById.get(block.tool_use_id) ?? '';
+                        let errorText = typeof block.content === 'string'
+                            ? block.content
+                            : Array.isArray(block.content)
+                                ? block.content.map(c => c.text ?? JSON.stringify(c)).join('\n')
+                                : 'Unknown tool error';
+                        errorText = errorText.replace(/^### (?:Error|Result)\n/, '').trim();
+
+                        if (verbose) logger.log(`❌ Tool Error [${toolName}]: ${errorText}`);
+
+                        if (toolName.includes('browser_verify_')) {
+                            assertionFailed = true;
+                            assertionError = errorText;
+                        }
+                    }
+                }
+            }
+
+            if (message.type === 'result' && message.subtype === 'success') {
+                finalResult = message.result ?? '';
+                if (verbose) logger.log(`✅ Result: ${finalResult}`);
+            }
         }
-      }
-      return undefined;
+
+        if (assertionFailed) {
+            const summary = finalResult.trim() || assertionError;
+            throw new Error(summary);
+        }
+
+        if (stepCount === 0) {
+            throw new Error('Agent responded without calling any Playwright MCP tools. The step is considered failed.');
+        }
+
+        return {
+            result: finalResult.trim(),
+            steps: stepCount,
+            sessionId: currentSessionId,
+        };
     },
-  };
-};
+});
