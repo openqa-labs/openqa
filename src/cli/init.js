@@ -43,11 +43,13 @@ const CLAUDE_CODE_MODELS = [
 ];
 
 const OPENCODE_MODELS = [
-  { value: 'anthropic/claude-haiku-4-5', label: 'anthropic/claude-haiku-4-5 (Default)' },
-  { value: 'anthropic/claude-sonnet-4-6', label: 'anthropic/claude-sonnet-4-6' },
-  { value: 'openai/gpt-4o', label: 'openai/gpt-4o' },
-  { value: 'google/gemini-2.0-flash', label: 'google/gemini-2.0-flash' },
-  { value: 'custom', label: 'Custom (enter manually — format: provider/model)' },
+  { value: 'gitlab/duo-chat-haiku-4-5',     label: 'gitlab/duo-chat-haiku-4-5 (Default — GitLab Duo)' },
+  { value: 'github-copilot/gpt-5.4',        label: 'github-copilot/gpt-5.4 (GitHub Copilot)' },
+  { value: 'anthropic/claude-haiku-4-5',    label: 'anthropic/claude-haiku-4-5' },
+  { value: 'anthropic/claude-sonnet-4-6',   label: 'anthropic/claude-sonnet-4-6' },
+  { value: 'openai/gpt-4o',                 label: 'openai/gpt-4o' },
+  { value: 'google/gemini-2.0-flash',       label: 'google/gemini-2.0-flash' },
+  { value: 'custom',                         label: 'Custom (enter manually — format: provider/model)' },
 ];
 
 export async function init(cliFramework, options) {
@@ -276,15 +278,16 @@ export async function init(cliFramework, options) {
     }
   }
 
-  // Next Steps — differ by agent
-  const authStep = agent === 'openCode'
-    ? `3. Run: opencode auth login   (connects your LLM provider)\n   — or add the provider API key to .env (e.g. ANTHROPIC_API_KEY)`
-    : `3. Add ANTHROPIC_API_KEY to the .env file`;
+  // Next Steps
+  const localAuthNote = agent === 'openCode'
+    ? `   Local (no API key needed): opencode auth login\n   CI / API key:               add provider key to .env (e.g. ANTHROPIC_API_KEY)`
+    : `   Local (no API key needed): claude login\n   CI / API key:               add ANTHROPIC_API_KEY to .env`;
 
   clack.note(
     `1. cd .openqa\n` +
     `2. cp .env.example .env\n` +
-    authStep + `\n` +
+    `3. Authenticate:\n` +
+    localAuthNote + `\n` +
     `4. npm run test:headed`,
     'Next Steps'
   );

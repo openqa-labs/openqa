@@ -40,7 +40,9 @@ Both agents connect to the same Playwright MCP server over HTTP and expose the s
 
 | Model | Provider |
 |-------|----------|
-| `anthropic/claude-haiku-4-5` | Anthropic (default) |
+| `gitlab/duo-chat-haiku-4-5` | GitLab Duo (default) |
+| `github-copilot/gpt-5.4` | GitHub Copilot |
+| `anthropic/claude-haiku-4-5` | Anthropic |
 | `openai/gpt-4o` | OpenAI |
 | `google/gemini-2.0-flash` | Google |
 
@@ -86,35 +88,40 @@ Your feature files **stay where they are**.
 
 ## Authentication
 
-```bash
-cp .openqa/.env.example .openqa/.env
-```
+<Note>
+  **No API key needed for local development.** Just log in once with the CLI and you're done.
+</Note>
 
 <Tabs>
-  <Tab title="Claude Code — CLI login (no API key needed locally)">
+  <Tab title="Claude Code (local)">
     ```bash
-    claude login  # one-time login
+    claude login
     ```
+    One-time login. No `.env` needed for local runs.
   </Tab>
-  <Tab title="Claude Code — API Key">
+  <Tab title="OpenCode (local)">
     ```bash
+    opencode auth login
+    ```
+    One-time login — works with GitLab Duo, GitHub Copilot, Anthropic, OpenAI, Google, and more. No `.env` needed for local runs.
+  </Tab>
+  <Tab title="API Key (Claude Code)">
+    ```bash
+    cp .openqa/.env.example .openqa/.env
+    # then add:
     ANTHROPIC_API_KEY=your_key_here
     ```
+    Use this for CI or if you prefer an explicit key.
   </Tab>
-  <Tab title="OpenCode — CLI login (no API key needed locally)">
+  <Tab title="API Key (OpenCode)">
     ```bash
-    opencode auth login  # one-time login
-    ```
-  </Tab>
-  <Tab title="OpenCode — API Key">
-    ```bash
-    # Anthropic
+    cp .openqa/.env.example .openqa/.env
+    # then add whichever provider key you need:
     ANTHROPIC_API_KEY=your_key_here
-    # OpenAI
-    OPENAI_API_KEY=your_key_here
-    # Google
-    GOOGLE_API_KEY=your_key_here
+    # OPENAI_API_KEY=your_key_here
+    # GOOGLE_API_KEY=your_key_here
     ```
+    Use this for CI or if you prefer an explicit key.
   </Tab>
 </Tabs>
 

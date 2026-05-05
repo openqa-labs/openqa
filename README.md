@@ -41,8 +41,8 @@ Then:
 ```bash
 cd .openqa
 cp .env.example .env
-# Claude Code: `claude login` locally, or set ANTHROPIC_API_KEY in .env
-# OpenCode: `opencode auth login` locally, or set provider API key in .env
+# Local: run `claude login` or `opencode auth login` — no API key needed
+# CI: add the relevant API key to .env
 npm run test:headed
 ```
 
@@ -65,19 +65,27 @@ npm run test:headed
 
 ## Authentication
 
-**Claude Code** — choose one:
+**No API key needed for local development** — just log in with the CLI once:
+
 ```bash
-claude login                              # local dev — no API key needed
-export ANTHROPIC_API_KEY=your_key        # env var or .openqa/.env
+# Claude Code
+claude login
+
+# OpenCode (supports GitLab Duo, GitHub Copilot, Anthropic, OpenAI, Google, …)
+opencode auth login
 ```
 
-**OpenCode** — choose one:
-```bash
-opencode auth login                       # local dev — no API key needed
-export ANTHROPIC_API_KEY=your_key        # or OPENAI_API_KEY, GOOGLE_API_KEY, etc.
-```
+For CI (or if you prefer an API key), set the relevant key in `.openqa/.env`:
 
-For CI, set the relevant API key as a secret.
+```bash
+# Claude Code
+ANTHROPIC_API_KEY=your_key
+
+# OpenCode — use whichever provider you're connecting to
+ANTHROPIC_API_KEY=your_key
+# OPENAI_API_KEY=your_key
+# GOOGLE_API_KEY=your_key
+```
 
 ---
 
@@ -159,11 +167,20 @@ Requires `@anthropic-ai/claude-agent-sdk` to be installed.
 
 ```javascript
 import { openCode } from 'openqa';
-const provider = openCode('anthropic/claude-haiku-4-5'); // default
-// or: openCode('openai/gpt-4o'), openCode('google/gemini-2.0-flash')
+const provider = openCode('gitlab/duo-chat-haiku-4-5'); // GitLab Duo (default in init)
+// or: openCode('github-copilot/gpt-5.4')
+// or: openCode('anthropic/claude-haiku-4-5'), openCode('openai/gpt-4o'), openCode('google/gemini-2.0-flash')
 ```
 
-Model format: `provider/model`. Supports any provider configured in your OpenCode setup.
+Model format: `provider/model`. Supports any provider configured in your OpenCode installation.
+
+| Model | Provider |
+|-------|----------|
+| `gitlab/duo-chat-haiku-4-5` | GitLab Duo (default) |
+| `github-copilot/gpt-5.4` | GitHub Copilot |
+| `anthropic/claude-haiku-4-5` | Anthropic |
+| `openai/gpt-4o` | OpenAI |
+| `google/gemini-2.0-flash` | Google |
 
 Requires `@opencode-ai/sdk` to be installed.
 
