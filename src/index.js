@@ -38,3 +38,4 @@ runAgent.resetSession = function (browserContext) {
 
 export { Orchestrator };
 export { claudeCode } from './agent/providers/claudeCode.js';
+export { openCode } from './agent/providers/openCode.js';
