@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
@@ -10,7 +11,7 @@ export default defineConfig({
     ['html', { open: 'never', outputFolder: 'playwright-report' }],
   ],
   use: {
-    baseURL: 'https://demo.playwright.dev/todomvc/',
+    baseURL: process.env.BASE_URL,
     screenshot: 'on',
     trace: 'on',
     video: 'on',

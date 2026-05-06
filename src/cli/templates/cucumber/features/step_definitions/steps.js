@@ -1,12 +1,14 @@
 import { Before, After, defineStep, setDefaultTimeout } from '@cucumber/cucumber';
-import { chromium, Browser, BrowserContext, Page } from '@playwright/test';
+import { chromium } from '@playwright/test';
 import { runAgent, claudeCode } from 'openqa';
 
 setDefaultTimeout(240000); // 4 minutes
 
-let browser: Browser;
-let context: BrowserContext;
-let page: Page;
+let browser;
+let context;
+let page;
+
+const verbose = process.env.OPENQA_VERBOSE !== 'false';
 
 Before(async function () {
   const headless = process.env.HEADLESS !== 'false';
@@ -23,5 +25,5 @@ After(async function () {
 
 // Generic AI step - handles ALL Given/When/Then steps with natural language
 defineStep(/^(.*)$/, async function (action) {
-  await runAgent(claudeCode('claude-haiku-4-5'), action, context, { verbose: true });
+  await runAgent(claudeCode('claude-haiku-4-5'), action, context, { verbose });
 });
