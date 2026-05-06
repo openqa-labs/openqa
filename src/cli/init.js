@@ -24,7 +24,7 @@ const FRAMEWORKS = {
   'playwright-bdd': {
     name: 'Playwright-BDD',
     description: 'Playwright with Gherkin/Cucumber syntax',
-    dependencies: ['openqa', 'playwright-bdd', '@playwright/test', 'typescript'],
+    dependencies: ['openqa', 'playwright-bdd', '@playwright/test', 'typescript', 'dotenv'],
     devDependencies: ['@cucumber/cucumber'],
   },
   'cucumber': {

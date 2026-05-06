@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { defineConfig } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 
@@ -12,10 +13,11 @@ export default defineConfig({
   fullyParallel: true,
   reporter: [['html', { open: 'never' }]],
   use: {
+    headless: process.env.HEADLESS !== 'false',
+    baseURL: process.env.BASE_URL,
     screenshot: 'on',
     trace: 'on',
     video: 'on',
-    headless: true,
   },
   projects: [
     {
