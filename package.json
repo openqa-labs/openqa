@@ -4,7 +4,7 @@
   "description": "Agent Harness for Browser Test Automation — write tests in natural language, powered by Claude Code or OpenCode",
   "type": "module",
   "bin": {
-    "openqa": "./src/cli/bin.js"
+    "openqa": "src/cli/bin.js"
   },
   "exports": {
     ".": "./src/index.js"
