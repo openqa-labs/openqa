@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import 'varlock/auto-load';
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({

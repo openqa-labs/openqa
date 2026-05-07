@@ -1,3 +1,4 @@
+import 'varlock/auto-load';
 import { Before, After, defineStep, setDefaultTimeout } from '@cucumber/cucumber';
 import { chromium } from '@playwright/test';
 import { runAgent, claudeCode } from 'openqa';

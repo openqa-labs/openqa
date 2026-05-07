@@ -2,16 +2,19 @@
   "name": "openqa-yaml-project",
   "version": "1.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "generate": "openqa generate",
-    "test": "openqa generate && playwright test",
-    "test:ui": "openqa generate && playwright test --ui",
-    "test:headed": "openqa generate && playwright test --headed",
+    "test": "npm run generate && playwright test",
+    "test:ui": "npm run generate && playwright test --ui",
+    "test:headed": "npm run generate && playwright test --headed",
     "test:report": "playwright show-report"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
-    "dotenv": "^16.0.0",
-    "openqa": "latest"
+    "openqa": "latest",
+    "varlock": "latest"
   }
 }
