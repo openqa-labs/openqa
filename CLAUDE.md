@@ -89,10 +89,10 @@ runAgent(provider, prompt, page/context)
 
 ### CLI System (`src/cli/`)
 
-- `openqa init` — Interactive wizard: Agent → Model → Framework → Feature path. Scaffolds `.openqa/`, installs the chosen agent SDK, optionally installs Playwright browsers.
+- `openqa init` — Interactive wizard: Agent → Model → Framework → Feature path. Scaffolds `.openqa/`, installs the chosen agent SDK + varlock, optionally installs Playwright browsers. Shows spinner progress during file creation.
 - `openqa generate [paths...]` — Converts YAML test files to Playwright `.spec.js`.
 
-Templates at `src/cli/templates/<framework>/`.
+Templates at `src/cli/templates/<framework>/`. Each template includes `.env.schema` (varlock schema, committed) and `.env.example` (copy-to-.env guide).
 
 ### Export Structure
 
@@ -132,14 +132,21 @@ if (pageOrContext.context && typeof pageOrContext.context === 'function') {
 
 ### Environment Variable Loading
 
-For local development, no `.env` is needed if you are already logged in:
-- **Claude Code** — uses the existing `claude login` session automatically
-- **OpenCode** — uses the existing `opencode auth login` session (e.g. GitLab Duo) automatically
+**Scaffolded `.openqa/` projects** use [varlock](https://varlock.dev) (Node.js 22+ required). `varlock run --` in npm scripts pre-injects validated env vars before the test process starts. The `.env.schema` file documents all variables with types and descriptions; secrets are redacted from logs automatically. Schema header format:
+```
+# @defaultSensitive=true @defaultRequired=false
+# @generateTypes(lang=ts, path=env.d.ts)
+# ---
+```
 
-If the logged-in session is unavailable or you need a specific API key, fall back to:
-1. `.openqa/.env` — loaded by `dotenv`
+**openqa library itself** (`src/index.js`) uses dotenv directly — no varlock dependency:
+1. `.openqa/.env` — loaded by dotenv (cwd when tests run from `.openqa/`)
 2. Parent project `.env` (`../.env`) — fallback for monorepo setups
 3. Shell environment — `ANTHROPIC_API_KEY` (claudeCode) or the relevant provider key (openCode)
+
+For local development, no `.env` is needed if already logged in:
+- **Claude Code** — uses the existing `claude login` session automatically
+- **OpenCode** — uses the existing `opencode auth login` session (e.g. GitLab Duo) automatically
 
 ### Feature File Step Syntax
 

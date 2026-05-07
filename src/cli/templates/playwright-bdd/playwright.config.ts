@@ -1,9 +1,10 @@
-import 'dotenv/config';
+import 'varlock/auto-load';
 import { defineConfig } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 
 const testDir = defineBddConfig({
-  features: 'features/*.feature',
+  featuresRoot: 'features',
+  features: 'features/**/*.feature',
   steps: 'features/steps/*.ts',
 });
 

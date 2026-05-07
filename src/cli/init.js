@@ -8,8 +8,15 @@ import * as clack from '@clack/prompts';
 import chalk from 'chalk';
 import { existsSync, mkdirSync, writeFileSync, readFileSync, cpSync, readdirSync } from 'fs';
 import { join, resolve, dirname } from 'path';
-import { execSync } from 'child_process';
+import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
+
+function runCommand(cmd, args, cwd) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(cmd, args, { cwd, stdio: 'ignore' });
+    proc.on('close', (code) => code === 0 ? resolve() : reject(new Error(`exited with code ${code}`)));
+  });
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -24,13 +31,13 @@ const FRAMEWORKS = {
   'playwright-bdd': {
     name: 'Playwright-BDD',
     description: 'Playwright with Gherkin/Cucumber syntax',
-    dependencies: ['openqa', 'playwright-bdd', '@playwright/test', 'typescript', 'dotenv'],
+    dependencies: ['openqa', 'playwright-bdd', '@playwright/test', 'typescript', 'varlock'],
     devDependencies: ['@cucumber/cucumber'],
   },
   'cucumber': {
     name: 'Cucumber.js',
     description: 'Standalone Cucumber with Playwright',
-    dependencies: ['openqa', '@cucumber/cucumber', '@playwright/test', 'typescript'],
+    dependencies: ['openqa', '@cucumber/cucumber', '@playwright/test', 'typescript', 'varlock'],
     devDependencies: [],
   },
 };
@@ -104,9 +111,10 @@ export async function init(cliFramework, options) {
 
   // Feature files path
   let featuresPath = await clack.text({
-    message: 'What is the relative path to your feature files from the project root?',
-    initialValue: 'features/',
-    placeholder: 'features/',
+    message: 'Where should feature files live? (path relative to .openqa/)',
+    initialValue: 'features',
+    placeholder: 'features',
+    hint: 'Use ../path/to/features to point outside .openqa/',
   });
   if (clack.isCancel(featuresPath)) return clack.cancel('Operation cancelled.');
 
@@ -136,17 +144,30 @@ export async function init(cliFramework, options) {
   const templateDir = join(__dirname, 'templates', framework);
 
   try {
-    const toCopy = ['gitignore', 'package.json', 'README.md', '.env.example'];
+    spinner.message('Copying template files...');
+    const toCopy = ['gitignore', 'package.json', 'README.md', '.env.example', '.env.schema'];
 
     if (framework === 'playwright-bdd') {
       toCopy.push('playwright.config.ts');
       mkdirSync(join(targetDir, 'steps'), { recursive: true });
       cpSync(join(templateDir, 'features/steps/fixtures.ts'), join(targetDir, 'steps/fixtures.ts'));
       cpSync(join(templateDir, 'features/steps/steps.ts'), join(targetDir, 'steps/steps.ts'));
+      // Copy example feature files into .openqa/features/
+      mkdirSync(join(targetDir, 'features'), { recursive: true });
+      const featureFiles = readdirSync(join(templateDir, 'features')).filter(f => f.endsWith('.feature'));
+      for (const f of featureFiles) {
+        cpSync(join(templateDir, 'features', f), join(targetDir, 'features', f));
+      }
     } else if (framework === 'cucumber') {
       toCopy.push('cucumber.js');
       mkdirSync(join(targetDir, 'steps'), { recursive: true });
       cpSync(join(templateDir, 'features/step_definitions/steps.js'), join(targetDir, 'steps/steps.js'));
+      // Copy example feature files into .openqa/features/
+      mkdirSync(join(targetDir, 'features'), { recursive: true });
+      const featureFiles = readdirSync(join(templateDir, 'features')).filter(f => f.endsWith('.feature'));
+      for (const f of featureFiles) {
+        cpSync(join(templateDir, 'features', f), join(targetDir, 'features', f));
+      }
     }
 
     for (const file of toCopy) {
@@ -155,14 +176,14 @@ export async function init(cliFramework, options) {
       }
     }
 
-    // Rewrite configuration files to point to parent features directory
+    spinner.message('Configuring paths...');
+
+    // Rewrite configuration files with the chosen features path
     if (framework === 'playwright-bdd') {
       const pConfigPath = join(targetDir, 'playwright.config.ts');
       let content = readFileSync(pConfigPath, 'utf8');
-      content = content.replace(
-        "features: 'features/*.feature',",
-        `featuresRoot: '../${featuresPath}',\n  features: '../${featuresPath}/**/*.feature',`
-      );
+      content = content.replace("featuresRoot: 'features'", `featuresRoot: '${featuresPath}'`);
+      content = content.replace("features: 'features/**/*.feature'", `features: '${featuresPath}/**/*.feature'`);
       content = content.replace("'features/steps/*.ts'", `'steps/*.ts'`);
       writeFileSync(pConfigPath, content);
     }
@@ -170,10 +191,12 @@ export async function init(cliFramework, options) {
     if (framework === 'cucumber') {
       const cConfigPath = join(targetDir, 'cucumber.js');
       let content = readFileSync(cConfigPath, 'utf8');
-      content = content.replace("'features/**/*.feature'", `'../${featuresPath}/**/*.feature'`);
+      content = content.replace("'features/**/*.feature'", `'${featuresPath}/**/*.feature'`);
       content = content.replace("'features/step_definitions/**/*.js'", `'steps/**/*.js'`);
       writeFileSync(cConfigPath, content);
     }
+
+    spinner.message('Configuring step definitions...');
 
     // Rewrite steps file: swap provider factory and model
     const stepsPath = framework === 'playwright-bdd'
@@ -228,8 +251,9 @@ export async function init(cliFramework, options) {
     return;
   }
 
-  // Install dependencies
-  spinner.start('📦 Installing dependencies (this may take a minute)...');
+  // Install dependencies — new spinner instance (stopped spinners cannot be restarted)
+  const installSpinner = clack.spinner();
+  installSpinner.start('📦 Installing dependencies (this may take a minute)...');
 
   const frameworkConfig = FRAMEWORKS[framework];
   const openqaVersion = cliVersion.includes('beta') || cliVersion.includes('alpha') || cliVersion.includes('rc')
@@ -247,14 +271,11 @@ export async function init(cliFramework, options) {
 
   let dependenciesInstalled = false;
   try {
-    execSync(`npm install ${allDeps.join(' ')}`, {
-      cwd: targetDir,
-      stdio: 'ignore',
-    });
-    spinner.stop('✓ Dependencies installed');
+    await runCommand('npm', ['install', ...allDeps], targetDir);
+    installSpinner.stop('✓ Dependencies installed');
     dependenciesInstalled = true;
   } catch (error) {
-    spinner.stop('❌ Error installing dependencies');
+    installSpinner.stop('❌ Error installing dependencies');
     console.error(chalk.red('You will need to run `npm install` manually inside .openqa'));
   }
 
@@ -268,12 +289,13 @@ export async function init(cliFramework, options) {
     if (clack.isCancel(installBrowsers)) return clack.cancel('Operation cancelled.');
 
     if (installBrowsers) {
-      spinner.start('📥 Installing Chromium...');
+      const browserSpinner = clack.spinner();
+      browserSpinner.start('📥 Installing Chromium...');
       try {
-        execSync('npx playwright install chromium', { cwd: targetDir, stdio: 'ignore' });
-        spinner.stop('✓ Chromium installed');
+        await runCommand('npx', ['playwright', 'install', 'chromium'], targetDir);
+        browserSpinner.stop('✓ Chromium installed');
       } catch (error) {
-        spinner.stop('❌ Error installing Chromium');
+        browserSpinner.stop('❌ Error installing Chromium');
       }
     }
   }

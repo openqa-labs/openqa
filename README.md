@@ -13,7 +13,7 @@
 - **⚡ 2-Minute Setup** — `npx openqa init` scaffolds a fully configured `.openqa/` in your existing project.
 - **🔒 No API Keys Required Locally** — Uses your existing `claude login` session (Claude Code) or `opencode auth login` (OpenCode). API keys only needed for CI.
 
-**Powered by:** [Claude Code SDK](https://claude.ai/code) • [OpenCode SDK](https://opencode.ai) • [Playwright MCP](https://github.com/microsoft/playwright-mcp)
+**Powered by:** [Claude Code SDK](https://claude.ai/code) • [OpenCode SDK](https://opencode.ai) • [Playwright MCP](https://github.com/microsoft/playwright-mcp) • [Playwright-BDD](https://github.com/vitalets/playwright-bdd) • [Cucumber.js](https://github.com/cucumber/cucumber-js) • [Varlock](https://varlock.dev)
 
 ---
 
@@ -29,13 +29,15 @@ The interactive wizard will ask you:
 1. **Agent** — Claude Code (`@anthropic-ai/claude-agent-sdk`) or OpenCode (`@opencode-ai/sdk`)
 2. **Model** — `claude-haiku-4-5` (default), `claude-sonnet-4-6`, `claude-opus-4-7`, or custom (OpenCode supports `anthropic/...`, `openai/...`, `google/...`)
 3. **Framework** — Playwright-BDD or Cucumber.js
-4. **Feature files path** — Relative path to your `.feature` files (default: `features/`)
+4. **Feature files path** — Where feature files live, relative to `.openqa/` (default: `features`)
 
 This scaffolds a `.openqa/` directory in your project containing:
 - `playwright.config.ts` or `cucumber.js` — pre-configured and pointing at your feature files
 - `steps/steps.ts` (or `.js`) — a single AI step definition that handles all Gherkin steps
 - `steps/fixtures.ts` — the Playwright-BDD fixture extension (Playwright-BDD only)
-- `.env.example` — template for required environment variables
+- `features/` — two example feature files to get started (`todomvc.feature`, `getting-started.feature`)
+- `.env.example` — copy this to `.env` and fill in your values
+- `.env.schema` — committed schema: documents every variable, types, and defaults; secrets are redacted from logs automatically
 
 Then:
 ```bash
@@ -60,6 +62,39 @@ npm run test:headed
 - **Parallel-safe** — each test worker gets its own HTTP port. No shared config files.
 - **Session resumption** — within a scenario, the agent resumes its conversation across steps.
 - **Multi-provider** — swap `claudeCode` for `openCode` to use any model from OpenAI, Google, Anthropic, etc.
+
+---
+
+## Environment Variables
+
+The `.openqa/` directory uses [varlock](https://varlock.dev) for environment variable management. Variables are defined in `.env.schema` (committed to git) and values go in `.env` (gitignored). Secrets are automatically redacted from logs.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BASE_URL` | — | App URL — sets Playwright `baseURL` and is injected into every agent prompt |
+| `APP_USERNAME` | — | Username — injected into agent prompt for login steps |
+| `APP_PASSWORD` | — | Password — injected into agent prompt; always redacted from logs |
+| `OPENQA_VERBOSE` | `true` | Set `false` to suppress step-by-step agent logs |
+| `HEADLESS` | `true` | Set `false` to watch the browser |
+| `ANTHROPIC_API_KEY` | — | Anthropic API key — only needed for CI (use `claude login` locally) |
+| `OPENAI_API_KEY` | — | OpenAI API key — only needed for CI via OpenCode |
+| `GOOGLE_API_KEY` | — | Google API key — only needed for CI via OpenCode |
+
+**Adding your own variables** — edit `.openqa/.env.schema` to declare them, then add values to `.env`:
+
+```
+# .openqa/.env.schema (add to the bottom)
+
+# @sensitive=false
+ENVIRONMENT = staging
+
+# Your test account credentials for the staging environment
+STAGING_USER =
+# @sensitive
+STAGING_PASSWORD =
+```
+
+Then use them in your steps or anywhere in the test process via `process.env.ENVIRONMENT`, etc.
 
 ---
 
@@ -89,19 +124,54 @@ ANTHROPIC_API_KEY=your_key
 
 ---
 
+## Customizing Your Setup
+
+`openqa init` creates a working starting point — everything in `.openqa/` is yours to edit. Common customizations:
+
+**Playwright config** — `.openqa/playwright.config.ts` is a standard [Playwright config](https://playwright.dev/docs/test-configuration). Add projects, change timeouts, add reporters, enable retries for CI:
+
+```typescript
+// .openqa/playwright.config.ts
+export default defineConfig({
+  timeout: 120000,
+  retries: process.env.CI ? 2 : 0,
+  use: {
+    baseURL: process.env.BASE_URL,
+    locale: 'en-US',
+    timezoneId: 'America/New_York',
+  },
+});
+```
+
+**Step definitions** — `.openqa/steps/steps.ts` is a regular [Playwright-BDD](https://playwright-bdd.dev) or [Cucumber.js](https://github.com/cucumber/cucumber-js) step file. Add custom (non-AI) steps alongside the AI step, or add Before/After hooks:
+
+```typescript
+// .openqa/steps/steps.ts — add a manual step alongside the AI one
+import { createBdd } from 'playwright-bdd';
+const { Given } = createBdd();
+
+Given('I am on the home page', async ({ page }) => {
+  await page.goto(process.env.BASE_URL!);
+});
+```
+
+---
+
 ## Writing Feature Files
+
+`openqa init` places two example feature files in `.openqa/features/` — `todomvc.feature` (2 scenarios) and `getting-started.feature` (1 scenario). Edit or replace them with your own.
 
 Feature files use standard Gherkin syntax. We recommend using `*` (asterisk) for steps instead of `Given`/`When`/`Then` — it reads more naturally for AI-driven tests:
 
 ```gherkin
-Feature: TodoMVC Automation
+Feature: TodoMVC
 
-  Scenario: Add todo item
+  Scenario: Add a todo item
     * I navigate to "https://demo.playwright.dev/todomvc/"
     * I add a new todo item "Buy groceries"
     * I should see "Buy groceries" in the todo list
 
-  Scenario: Filter todos
+  Scenario: Filter completed todos
     * I navigate to "https://demo.playwright.dev/todomvc/"
     * I add three todo items: "Task 1", "Task 2", and "Task 3"
     * I mark the first todo as completed
@@ -110,6 +180,22 @@ Feature: TodoMVC Automation
 ```
 
 You can still use `Given`/`When`/`Then` — both work identically.
+
+**Moving feature files elsewhere** — if your feature files live outside `.openqa/` (e.g. `features/` in the project root), update the path in your config:
+
+For Playwright-BDD, edit `.openqa/playwright.config.ts`:
+```typescript
+const testDir = defineBddConfig({
+  featuresRoot: '../features',
+  features: '../features/**/*.feature',
+  steps: 'steps/*.ts',
+});
+```
+
+For Cucumber.js, edit `.openqa/cucumber.js`:
+```js
+paths: ['../features/**/*.feature'],
+```
 
 ---
 
@@ -241,7 +327,8 @@ Resets the Claude Code conversation session for a specific browser context. Usef
 
 ## Requirements
 
-- Node.js 18+
+- **openqa library:** Node.js 18+
+- **Scaffolded `.openqa/` project:** Node.js 22+ (required by varlock)
 - `@playwright/test` ^1.57.0
 - One of: `@anthropic-ai/claude-agent-sdk` (for `claudeCode`) or `@opencode-ai/sdk` (for `openCode`)
 

@@ -75,14 +75,18 @@ The harness will be configured to point at them automatically, wherever they liv
 ```
 your-project/
 └── .openqa/               ← agent harness lives here
-    ├── .env.example       ← copy to .env and fill in your API key
+    ├── .env.example       ← copy to .env and fill in your values
+    ├── .env.schema        ← committed schema: variable types, defaults, secret redaction
     ├── playwright.config.ts  (or cucumber.js)
+    ├── features/          ← example feature files (edit or replace these)
+    │   ├── todomvc.feature        ← 2 scenarios
+    │   └── getting-started.feature ← 1 scenario
     └── steps/
         ├── fixtures.ts    ← Playwright-BDD only
         └── steps.ts       ← single AI step definition
 ```
 
-Your feature files **stay where they are**.
+Feature files live in `.openqa/features/` by default. To move them, update the path in `playwright.config.ts` (or `cucumber.js`) — see [Writing Feature Files](#writing-feature-files).
 
 ---
 
@@ -127,12 +131,55 @@ Your feature files **stay where they are**.
 
 ---
 
-## Write a feature file
+## Environment Variables
+
+The scaffolded project uses [varlock](https://varlock.dev) for environment variable management. Variables are defined in `.env.schema` (committed to git) and values go in `.env` (gitignored). Secrets are automatically redacted from logs.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BASE_URL` | — | App URL — sets Playwright `baseURL` and injected into every agent prompt |
+| `APP_USERNAME` | — | Username — injected into agent prompt for login steps |
+| `APP_PASSWORD` | — | Password — injected into prompt; always redacted from logs |
+| `OPENQA_VERBOSE` | `true` | Set `false` to suppress step-by-step agent logs |
+| `HEADLESS` | `true` | Set `false` to watch the browser |
+| `ANTHROPIC_API_KEY` | — | Anthropic API key — CI only (use `claude login` locally) |
+| `OPENAI_API_KEY` | — | OpenAI API key — CI only via OpenCode |
+| `GOOGLE_API_KEY` | — | Google API key — CI only via OpenCode |
+
+All variables are optional. Copy `.env.example` to `.env` and uncomment what you need.
+
+**Adding your own variables** — declare them in `.env.schema`, add values to `.env`:
+
+```
+# .env.schema
+# @sensitive=false
+ENVIRONMENT = staging
+
+STAGING_USER =
+# @sensitive
+STAGING_PASSWORD =
+```
+
+---
+
+## Customizing Your Setup
+
+`openqa init` is a starting point — everything in `.openqa/` is yours to edit.
+
+**Playwright config** — `.openqa/playwright.config.ts` is a standard [Playwright config file](https://playwright.dev/docs/test-configuration). Update timeouts, add projects, enable retries, change reporters — anything the Playwright docs describe will work here.
+
+**Step definitions** — `.openqa/steps/steps.ts` is a regular [Playwright-BDD](https://playwright-bdd.dev) step file (or [Cucumber.js](https://github.com/cucumber/cucumber-js) for the Cucumber framework). Add non-AI steps, Before/After hooks, or custom fixtures alongside the AI step.
+
+---
+
+## Writing Feature Files
+
+Two example feature files are scaffolded into `.openqa/features/` — edit or replace them with your own tests.
 
 Use `*` (asterisk) for natural, AI-friendly steps:
 
 ```gherkin
-Feature: TodoMVC Automation
+Feature: TodoMVC
 
   Scenario: Add a todo item
     * I navigate to "https://demo.playwright.dev/todomvc/"
@@ -153,6 +200,17 @@ Standard `Given`/`When`/`Then` also works — both are identical under the hood.
 - Be specific about URLs: `I navigate to "https://..."` not `I go to the site`
 - Quote the exact text you expect: `I should see "Buy groceries"`
 - Describe intent, not mechanics: `I add a new todo item "..."` not `I click the input and type "..."`
+
+**Moving feature files elsewhere** — update the path in `.openqa/playwright.config.ts` (or `cucumber.js`):
+
+```typescript
+// playwright.config.ts — point to a directory outside .openqa/
+const testDir = defineBddConfig({
+  featuresRoot: '../features',
+  features: '../features/**/*.feature',
+  steps: 'steps/*.ts',
+});
+```
 
 ---
 
