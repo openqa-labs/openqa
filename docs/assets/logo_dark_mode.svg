@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="80" viewBox="0 0 200 40">
+  <defs>
+    <style type="text/css">
+      @import url('https://fonts.googleapis.com/css2?family=Libre Baskerville:ital,opsz,wght@0,9..144,400;1,9..144,400&amp;display=swap');
+      .text { font-family: 'Libre Baskerville', serif; font-size: 28px; fill: #F0EDE8; }
+      .accent { font-family: 'Libre Baskerville', serif; font-size: 28px; font-style: italic; fill: #EB521E; }
+    </style>
+  </defs>
+  <g transform="translate(5, 5)">
+    <svg width="30" height="30" viewBox="0 0 32 32">
+      <circle cx="16" cy="16" r="13" fill="none" stroke="#EB521E" stroke-width="2.5"/>
+      <path d="M16 9 a7 7 0 1 1 -5 12 M22 22 L26 26" fill="none" stroke="#EB521E" stroke-width="2.5" stroke-linecap="round"/>
+      <rect x="14.5" y="14.5" width="3" height="3" fill="#EB521E"/>
+    </svg>
+  </g>
+  <text x="45" y="28" class="text">Open<tspan class="accent">QA</tspan></text>
+</svg>

@@ -1,11 +1,21 @@
-/* Sidebar logo - target the exact element */
-#sidebar-content>div:first-child a img,
+/* Sidebar logo - sized for SVG assets */
+#sidebar-content > div:first-child a img,
 #sidebar-content a img.nav-logo,
 img.nav-logo {
-    height: 43px !important;
-    width: 168px !important;
-    min-width: 168px !important;
+    height: 36px !important;
+    width: auto !important;
+    min-width: unset !important;
     max-width: none !important;
     object-fit: contain !important;
     object-position: left center !important;
+}
+
+/* Sharp corners on interactive elements (brand rule: 0px radius) */
+button, .btn, [class*="Button"], a[class*="btn"] {
+    border-radius: 0 !important;
+}
+
+/* Roboto Mono for code blocks */
+code, pre, [class*="code"], [class*="Code"] {
+    font-family: 'Roboto Mono', monospace !important;
 }

@@ -1,18 +1,31 @@
 {
     "$schema": "https://mintlify.com/docs.json",
-    "theme": "maple",
+    "theme": "quill",
     "name": "OpenQA",
     "description": "Agent Harness for Browser Test Automation",
     "colors": {
-        "primary": "#8b5cf6",
-        "light": "#a78bfa",
-        "dark": "#7c3aed"
+        "primary": "#EB521E",
+        "light": "#F07040",
+        "dark": "#C94418",
+        "background": {
+            "light": "#F0EDE8"
+        }
+    },
+    "font": {
+        "headings": {
+            "family": "Libre Baskerville",
+            "source": "google"
+        },
+        "body": {
+            "family": "Manrope",
+            "source": "google"
+        }
     },
     "logo": {
-        "light": "/assets/400x114.png",
-        "dark": "/assets/400x114-NoBackground.png"
+        "light": "/assets/logo_light_mode.svg",
+        "dark": "/assets/logo_dark_mode.svg"
     },
-    "favicon": "/assets/favicon.png",
+    "favicon": "/assets/favicon.svg",
     "navigation": {
         "groups": [
             {
