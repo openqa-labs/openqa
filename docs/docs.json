@@ -1,15 +1,12 @@
 {
     "$schema": "https://mintlify.com/docs.json",
-    "theme": "quill",
+    "theme": "mint",
     "name": "OpenQA",
     "description": "Agent Harness for Browser Test Automation",
     "colors": {
         "primary": "#EB521E",
         "light": "#F07040",
-        "dark": "#C94418",
-        "background": {
-            "light": "#F0EDE8"
-        }
+        "dark": "#C94418"
     },
     "font": {
         "headings": {
