@@ -1,58 +1,54 @@
 <img src="docs/assets/logo_light_mode.svg" height="40" alt="OpenQA" />
 
 # OpenQA
-
-### Let your agents test their own work.
-**The open-source agentic testing harness for browser automation. Write tests in plain English, let the agent figure out the selectors. Deterministic regression without the brittleness.**
+**The open-source agentic testing harness. Write tests in plain English — the agent figures out the selectors.**
 
 [![npm version](https://badge.fury.io/js/openqa.svg)](https://www.npmjs.com/package/openqa)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Features
-
-- **✍️ Write in plain English** — Standard Gherkin `.feature` files. Readable by PMs, executable by CI — the same file does both.
-- **🚫 No selectors. Ever.** — The agent navigates a real browser by intent alone. Survives any UI refactor automatically. No CSS selectors, no XPath, no brittle locators to maintain.
-- **📊 CI-grade evidence on every run** — Full HTML report, trace viewer, and screenshot diffs after every scenario. Ship with proof, not hope.
-- **⚡ 2-Minute Setup** — `npx openqa init` scaffolds a complete `.openqa/` harness into your existing project.
-- **🔒 No API Key Required Locally** — Uses your existing `claude login` or `opencode auth login` session. API keys only needed for CI.
-- **🔀 Dual-Engine Architecture** — [opencode](https://opencode.ai) (70+ providers: GitHub Copilot, Google Gemini, Amazon Bedrock, Ollama…) or [Claude Code SDK](https://claude.ai/code) (native Anthropic). Pick one, configure in seconds.
-
-Built for **agentic engineering** workflows — the same agent that builds your product can verify it. Think of it as vibe testing: describe what your product should do, and the agent figures out how to test it.
-
-**Powered by:** [Claude Code SDK](https://claude.ai/code) • [opencode](https://opencode.ai) • [Playwright MCP](https://github.com/microsoft/playwright-mcp) • [Playwright-BDD](https://github.com/vitalets/playwright-bdd) • [Cucumber.js](https://github.com/cucumber/cucumber-js) • [Varlock](https://varlock.dev)
-
----
-
 ## Quick Start
 
-Run this from your existing project root:
+**Prerequisites** — log in with your AI provider once (no API key needed locally):
 
+```bash
+claude login           # Claude Code (Anthropic)
+opencode auth login    # GitHub Copilot, Google Gemini, OpenAI, Amazon Bedrock, and 70+ more
+```
+
+**1. Scaffold the harness:**
 ```bash
 npx openqa init
 ```
 
-The interactive wizard will ask you:
-1. **Agent** — Claude Code (`@anthropic-ai/claude-agent-sdk`) or OpenCode (`@opencode-ai/sdk`)
-2. **Model** — `claude-haiku-4-5` (default), `claude-sonnet-4-6`, `claude-opus-4-7`, or custom (OpenCode supports `anthropic/...`, `openai/...`, `google/...`)
-3. **Framework** — Playwright-BDD or Cucumber.js
-4. **Feature files path** — Where feature files live, relative to `.openqa/` (default: `features`)
+**2. Write a feature file** (`.openqa/features/my-app.feature`):
+```gherkin
+Feature: My App
 
-This scaffolds a `.openqa/` directory in your project containing:
-- `playwright.config.ts` or `cucumber.js` — pre-configured and pointing at your feature files
-- `steps/steps.ts` (or `.js`) — a single AI step definition that handles all Gherkin steps
-- `steps/fixtures.ts` — the Playwright-BDD fixture extension (Playwright-BDD only)
-- `features/` — two example feature files to get started (`todomvc.feature`, `getting-started.feature`)
-- `.env.example` — copy this to `.env` and fill in your values
-- `.env.schema` — committed schema: documents every variable, types, and defaults; secrets are redacted from logs automatically
-
-Then:
-```bash
-cd .openqa
-cp .env.example .env
-# Local: run `claude login` or `opencode auth login` — no API key needed
-# CI: add the relevant API key to .env
-npm run test:headed
+  Scenario: User can log in
+    * Navigate to "https://myapp.com"
+    * Enter credentials and submit the login form
+    * Should see the dashboard
 ```
+
+**3. Run:**
+```bash
+cd .openqa && npm test
+```
+
+No step definitions. No selectors. No code.
+
+---
+
+## Features
+
+- **No selectors. Ever.** — Agent navigates by intent. Survives any UI refactor automatically.
+- **CI-grade evidence** — HTML report, trace viewer, and screenshots on every run.
+- **No API key locally** — Uses your `claude login` or `opencode auth login` session.
+- **2-minute setup** — `npx openqa init` scaffolds the complete harness into your project.
+- **Dual-engine** — [opencode](https://opencode.ai) (70+ providers) or [Claude Code SDK](https://claude.ai/code). Pick one.
+- **BDD & YAML** — Playwright-BDD, Cucumber.js, or YAML.
+
+**Powered by:** [Claude Code SDK](https://claude.ai/code) • [opencode](https://opencode.ai) • [Playwright MCP](https://github.com/microsoft/playwright-mcp) • [Playwright-BDD](https://github.com/vitalets/playwright-bdd) • [Cucumber.js](https://github.com/cucumber/cucumber-js)
 
 ---
 
@@ -173,16 +169,16 @@ Feature files use standard Gherkin syntax. We recommend using `*` (asterisk) for
 Feature: TodoMVC
 
   Scenario: Add a todo item
-    * I navigate to "https://demo.playwright.dev/todomvc/"
-    * I add a new todo item "Buy groceries"
-    * I should see "Buy groceries" in the todo list
+    * Navigate to "https://demo.playwright.dev/todomvc/"
+    * Add a new todo item "Buy groceries"
+    * Should see "Buy groceries" in the todo list
 
   Scenario: Filter completed todos
-    * I navigate to "https://demo.playwright.dev/todomvc/"
-    * I add three todo items: "Task 1", "Task 2", and "Task 3"
-    * I mark the first todo as completed
-    * I click the Active filter
-    * I should see 2 active todos
+    * Navigate to "https://demo.playwright.dev/todomvc/"
+    * Add three todo items: "Task 1", "Task 2", and "Task 3"
+    * Mark the first todo as completed
+    * Click the Active filter
+    * Should see 2 active todos
 ```
 
 You can still use `Given`/`When`/`Then` — both work identically.
@@ -243,25 +239,6 @@ await runAgent(openCode('google/gemini-2.0-flash'), action, page);
 ```
 
 That's the only change needed — one import swap and one string update.
-
----
-
-## Using `runAgent` Directly
-
-For custom Playwright tests (without BDD):
-
-```typescript
-import { test } from "@playwright/test";
-import { runAgent, claudeCode } from "openqa";
-
-test("AI agent fills form", async ({ page }) => {
-  await page.goto("https://example.com/form");
-
-  await runAgent(claudeCode('claude-haiku-4-5'), "Fill in the form with test data", page, { verbose: true });
-
-  await expect(page.locator('input[name="email"]')).toHaveValue("test@example.com");
-});
-```
 
 ---
 
