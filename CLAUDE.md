@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-OpenQA is an AI-powered browser test automation framework that uses natural language to write Playwright tests. It integrates with Playwright-BDD, Cucumber.js, and YAML-based test definitions.
+OpenQA is an agent harness for browser test automation — write tests in plain English, let the agent navigate a real browser. The same agent that builds your product can verify it. It integrates with Playwright-BDD, Cucumber.js, and YAML-based test definitions.
 
 **Key architecture:** Uses a **unified SDK architecture** — both `claudeCode` and `openCode` providers expose Playwright MCP over HTTP/SSE and implement a single `provider.run()` interface. The Orchestrator is a thin coordinator (~50 lines) that wires MCP to the provider.
 

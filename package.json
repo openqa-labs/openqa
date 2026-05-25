@@ -10,6 +10,10 @@
     ".": "./src/index.js"
   },
   "keywords": [
+    "agentic-testing",
+    "agentic-engineering",
+    "agent-harness",
+    "vibe-testing",
     "claude",
     "agent",
     "playwright",
@@ -24,7 +28,7 @@
     "behavior-driven-development"
   ],
   "author": "Gurvinder Dhillon",
-  "homepage": "https://www.openqa.io/",
+  "homepage": "https://openqa.io/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/openqa-labs/openqa.git"

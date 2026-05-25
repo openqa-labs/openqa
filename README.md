@@ -1,19 +1,25 @@
+<img src="docs/assets/logo_light_mode.svg" height="40" alt="OpenQA" />
+
 # OpenQA
 
-### AI Powered Natural Language Browser Test Automation
-**No selectors. No flake. Just plain English.**
+### Let your agents test their own work.
+**The open-source agentic testing harness for browser automation. Write tests in plain English, let the agent figure out the selectors. Deterministic regression without the brittleness.**
 
 [![npm version](https://badge.fury.io/js/openqa.svg)](https://www.npmjs.com/package/openqa)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
 
-- **🗣️ Write Tests in Plain English** — Describe what you want, not how to find it. "Add laptop to cart" just works.
-- **📝 BDD & YAML Support** — Works with Playwright-BDD, Cucumber.js, or simple YAML files.
-- **⚡ 2-Minute Setup** — `npx openqa init` scaffolds a fully configured `.openqa/` in your existing project.
-- **🔒 No API Keys Required Locally** — Uses your existing `claude login` session (Claude Code) or `opencode auth login` (OpenCode). API keys only needed for CI.
+- **✍️ Write in plain English** — Standard Gherkin `.feature` files. Readable by PMs, executable by CI — the same file does both.
+- **🚫 No selectors. Ever.** — The agent navigates a real browser by intent alone. Survives any UI refactor automatically. No CSS selectors, no XPath, no brittle locators to maintain.
+- **📊 CI-grade evidence on every run** — Full HTML report, trace viewer, and screenshot diffs after every scenario. Ship with proof, not hope.
+- **⚡ 2-Minute Setup** — `npx openqa init` scaffolds a complete `.openqa/` harness into your existing project.
+- **🔒 No API Key Required Locally** — Uses your existing `claude login` or `opencode auth login` session. API keys only needed for CI.
+- **🔀 Dual-Engine Architecture** — [opencode](https://opencode.ai) (70+ providers: GitHub Copilot, Google Gemini, Amazon Bedrock, Ollama…) or [Claude Code SDK](https://claude.ai/code) (native Anthropic). Pick one, configure in seconds.
 
-**Powered by:** [Claude Code SDK](https://claude.ai/code) • [OpenCode SDK](https://opencode.ai) • [Playwright MCP](https://github.com/microsoft/playwright-mcp) • [Playwright-BDD](https://github.com/vitalets/playwright-bdd) • [Cucumber.js](https://github.com/cucumber/cucumber-js) • [Varlock](https://varlock.dev)
+Built for **agentic engineering** workflows — the same agent that builds your product can verify it. Think of it as vibe testing: describe what your product should do, and the agent figures out how to test it.
+
+**Powered by:** [Claude Code SDK](https://claude.ai/code) • [opencode](https://opencode.ai) • [Playwright MCP](https://github.com/microsoft/playwright-mcp) • [Playwright-BDD](https://github.com/vitalets/playwright-bdd) • [Cucumber.js](https://github.com/cucumber/cucumber-js) • [Varlock](https://varlock.dev)
 
 ---
 
