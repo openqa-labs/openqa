@@ -38,6 +38,10 @@
     "navbar": {
         "links": [
             {
+                "label": "openqa.io",
+                "href": "https://openqa.io"
+            },
+            {
                 "label": "GitHub",
                 "href": "https://github.com/openqa-labs/openqa"
             },
